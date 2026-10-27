@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 APP_NAME = "Fikrado Security"
-APP_VERSION = "1.2.0"
+APP_VERSION = "2.6.87"
 APP_AUTHOR = "Fikrado Security"
 APP_PUBLISHER = "Fikrado Security"
 APP_COPYRIGHT = "Copyright © 2026 Fikrado Security"

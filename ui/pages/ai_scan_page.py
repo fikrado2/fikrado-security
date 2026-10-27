@@ -246,7 +246,7 @@ class AIScanPage(QWidget):
                 border: 1px solid rgba(255, 255, 255, 18);
                 border-radius: 11px;
                 color: #ECEFF4;
-                font-family: "Segoe UI", "Segoe UI Variable Text", sans-serif;
+                font-family: "Segoe UI";
                 font-size: 13px;
                 padding: 12px;
             }

@@ -5,8 +5,8 @@
 #
 VSVersionInfo(
   ffi=FixedFileInfo(
-    filevers=(1, 2, 0, 0),
-    prodvers=(1, 2, 0, 0),
+    filevers=(2, 6, 87, 0),
+    prodvers=(2, 6, 87, 0),
     mask=0x3f,
     flags=0x0,
     OS=0x40004,
@@ -22,12 +22,12 @@ VSVersionInfo(
           [
             StringStruct(u'CompanyName', u'Fikrado Security'),
             StringStruct(u'FileDescription', u'Fikrado Security - Windows Endpoint Defense'),
-            StringStruct(u'FileVersion', u'1.2.0.0'),
+            StringStruct(u'FileVersion', u'2.6.87.0'),
             StringStruct(u'InternalName', u'FikradoSecurity'),
             StringStruct(u'LegalCopyright', u'Copyright © 2026 Fikrado Security'),
             StringStruct(u'OriginalFilename', u'FikradoSecurity.exe'),
             StringStruct(u'ProductName', u'Fikrado Security'),
-            StringStruct(u'ProductVersion', u'1.2.0.0'),
+            StringStruct(u'ProductVersion', u'2.6.87.0'),
             StringStruct(u'Publisher', u'Fikrado Security'),
           ]
         )

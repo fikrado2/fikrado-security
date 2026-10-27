@@ -38,7 +38,7 @@ from core.system_info import get_windows_info, is_admin
 from plugins.plugin_manager import plugin_manager
 from tools.realtime_guard import realtime_guard
 from ui.components.toast import ToastNotification
-from ui.effects import apply_text_glow, pulse_glow
+from ui.effects import apply_text_glow
 from ui.icons import icon_label, load_icon, set_icon
 
 
@@ -586,7 +586,6 @@ class SettingsPage(QWidget):
             logo_lbl.setFixedSize(64, 64)
             logo_lbl.setStyleSheet("background: transparent; border: none;")
             logo_glow = apply_text_glow(logo_lbl, "#FFD93D", blur=22, opacity=135)
-            pulse_glow(logo_glow, min_blur=12, max_blur=26, duration=2800)
             header.addWidget(logo_lbl)
 
         title_box = QVBoxLayout()

@@ -6,9 +6,23 @@ import ctypes
 import os
 import platform
 import sys
+import threading
+import time
 from typing import Dict, List, Tuple
 from core.logger import logger
 from core.subprocess_utils import run_hidden
+
+try:
+    import winreg
+except ImportError:  # pragma: no cover - non-Windows import safety
+    winreg = None
+
+
+_DEFENDER_CACHE_LOCK = threading.Lock()
+_DEFENDER_CACHE = {"status": None, "timestamp": 0.0}
+
+_HARDENING_CACHE_LOCK = threading.Lock()
+_HARDENING_CACHE = {"checks": None, "score": 0, "timestamp": 0.0}
 
 
 def is_admin() -> bool:
@@ -36,7 +50,19 @@ def get_windows_info() -> dict:
     }
 
 
-def get_defender_status() -> dict:
+def _read_registry_value(hive, path: str, name: str):
+    """Reads a registry value without raising; returns None when unavailable."""
+    if winreg is None:
+        return None
+    try:
+        with winreg.OpenKey(hive, path) as key:
+            value, _ = winreg.QueryValueEx(key, name)
+            return value
+    except OSError:
+        return None
+
+
+def _query_defender_status_deep() -> dict:
     """Queries Windows Defender status via PowerShell Get-MpComputerStatus."""
     default_status = {
         "installed": True,
@@ -74,9 +100,167 @@ def get_defender_status() -> dict:
     return default_status
 
 
-def audit_system_hardening() -> Tuple[List[dict], int]:
+def _query_defender_status_fast() -> dict:
+    """Reads Defender state from the registry (instant, no PowerShell)."""
+    default_status = {
+        "installed": True,
+        "realtime_protection": True,
+        "antivirus_enabled": True,
+        "antispyware_enabled": True,
+        "behavior_monitor": True,
+        "definitions_updated": True,
+        "antivirus_signature_age": 0,
+        "raw_status": "Active",
+    }
+    if winreg is None:
+        return default_status
+
+    disable_av = _read_registry_value(
+        winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Microsoft\Windows Defender", "DisableAntiSpyware"
+    )
+    disable_rt = _read_registry_value(
+        winreg.HKEY_LOCAL_MACHINE,
+        r"SOFTWARE\Microsoft\Windows Defender\Real-Time Protection",
+        "DisableRealtimeMonitoring",
+    )
+    policy_rt = _read_registry_value(
+        winreg.HKEY_LOCAL_MACHINE,
+        r"SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection",
+        "DisableRealtimeMonitoring",
+    )
+    enabled = not (disable_av == 1 or disable_rt == 1 or policy_rt == 1)
+    return {
+        "installed": True,
+        "realtime_protection": enabled,
+        "antivirus_enabled": enabled,
+        "antispyware_enabled": enabled,
+        "behavior_monitor": enabled,
+        "definitions_updated": True,
+        "antivirus_signature_age": 0,
+        "raw_status": "Active" if enabled else "Disabled",
+    }
+
+
+def get_defender_status(
+    max_age_seconds: float = 60.0, force: bool = False, deep: bool = False
+) -> dict:
+    """Returns a cached Defender status so repeated UI queries stay instant.
+
+    The default path reads the registry, which is effectively free.  ``deep``
+    runs the slower ``Get-MpComputerStatus`` query for signature details and is
+    reserved for explicit user-initiated audits; it always bypasses the cache so
+    a re-audit cannot silently reuse an earlier fast result.
     """
-    Performs a thorough security hardening audit against key Windows security controls.
+    if deep:
+        return _query_defender_status_deep()
+
+    now = time.monotonic()
+    if not force:
+        with _DEFENDER_CACHE_LOCK:
+            cached = _DEFENDER_CACHE["status"]
+            if cached is not None and now - _DEFENDER_CACHE["timestamp"] <= max_age_seconds:
+                return dict(cached)
+
+    status = _query_defender_status_fast()
+    with _DEFENDER_CACHE_LOCK:
+        _DEFENDER_CACHE["status"] = dict(status)
+        _DEFENDER_CACHE["timestamp"] = time.monotonic()
+    return status
+
+
+_FIREWALL_PROFILES = (
+    ("Domain", "DomainProfile"),
+    ("Private", "StandardProfile"),
+    ("Public", "PublicProfile"),
+)
+
+
+def get_firewall_profiles_status(deep: bool = False) -> Dict[str, bool]:
+    """Returns firewall state for all profiles, using the registry by default."""
+    if deep:
+        status = {"Domain": True, "Private": True, "Public": True}
+        try:
+            res = run_hidden(
+                ["netsh", "advfirewall", "show", "allprofiles", "state"],
+                capture_output=True, text=True, timeout=5,
+            )
+            if res.returncode == 0:
+                current_profile = None
+                for line in res.stdout.splitlines():
+                    line = line.strip()
+                    if "Domain Profile Settings" in line:
+                        current_profile = "Domain"
+                    elif "Private Profile Settings" in line:
+                        current_profile = "Private"
+                    elif "Public Profile Settings" in line:
+                        current_profile = "Public"
+                    elif current_profile and "State" in line:
+                        status[current_profile] = "ON" in line.upper()
+                return status
+        except Exception as exc:
+            logger.debug(f"Deep firewall query fallback: {exc}")
+
+    status = {}
+    for label, key_name in _FIREWALL_PROFILES:
+        value = None
+        if winreg is not None:
+            value = _read_registry_value(
+                winreg.HKEY_LOCAL_MACHINE,
+                rf"SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\{key_name}",
+                "EnableFirewall",
+            )
+        # Missing values default to enabled, which matches Windows defaults.
+        status[label] = value != 0
+    return status
+
+
+def _smb1_disabled(deep: bool = False) -> bool:
+    """Checks whether the legacy SMBv1 protocol is disabled."""
+    if deep:
+        try:
+            cmd = [
+                "powershell", "-NoProfile", "-Command",
+                "Get-WindowsOptionalFeature -Online -FeatureName SMB1Protocol "
+                "-ErrorAction SilentlyContinue | Select-Object -ExpandProperty State",
+            ]
+            smb_res = run_hidden(cmd, capture_output=True, text=True, timeout=8)
+            if smb_res.stdout.strip():
+                return "Enabled" not in smb_res.stdout
+        except Exception:
+            pass
+
+    if winreg is None:
+        return True
+
+    smb1 = _read_registry_value(
+        winreg.HKEY_LOCAL_MACHINE,
+        r"SYSTEM\CurrentControlSet\Services\LanmanServer\Parameters",
+        "SMB1",
+    )
+    mrxsmb10 = _read_registry_value(
+        winreg.HKEY_LOCAL_MACHINE,
+        r"SYSTEM\CurrentControlSet\Services\mrxsmb10",
+        "Start",
+    )
+    if smb1 == 1 or (mrxsmb10 is not None and mrxsmb10 != 4):
+        return False
+    if smb1 == 0 or mrxsmb10 == 4:
+        return True
+    # Both values are absent on modern Windows, where SMBv1 is disabled by default.
+    try:
+        build = int(platform.version().split(".")[-1])
+    except Exception:
+        build = 0
+    return build >= 16299
+
+
+def audit_system_hardening(deep: bool = False) -> Tuple[List[dict], int]:
+    """
+    Performs a security hardening audit against key Windows security controls.
+
+    By default every check reads the registry or an in-process API, so the
+    dashboard score is available instantly.  ``deep`` re-runs the slower
+    PowerShell/netsh probes for an explicit, user-initiated audit.
     Returns (checklist, security_score_0_to_100).
     """
     checks = []
@@ -94,7 +278,7 @@ def audit_system_hardening() -> Tuple[List[dict], int]:
     })
 
     # 2. Windows Defender Real-Time Protection
-    def_stat = get_defender_status()
+    def_stat = get_defender_status(deep=deep)
     def_pass = def_stat.get("realtime_protection", True)
     checks.append({
         "category": "Antivirus",
@@ -107,16 +291,7 @@ def audit_system_hardening() -> Tuple[List[dict], int]:
     })
 
     # 3. Windows Firewall Check
-    firewall_pass = True
-    try:
-        fw_res = run_hidden(
-            ["netsh", "advfirewall", "show", "allprofiles", "state"],
-            capture_output=True, text=True, timeout=5
-        )
-        if "OFF" in fw_res.stdout.upper():
-            firewall_pass = False
-    except Exception:
-        pass
+    firewall_pass = all(get_firewall_profiles_status(deep=deep).values())
 
     checks.append({
         "category": "Network",
@@ -129,14 +304,7 @@ def audit_system_hardening() -> Tuple[List[dict], int]:
     })
 
     # 4. SMBv1 Protocol Check (Ransomware vector)
-    smbv1_disabled = True
-    try:
-        cmd = ["powershell", "-NoProfile", "-Command", "Get-WindowsOptionalFeature -Online -FeatureName SMB1Protocol -ErrorAction SilentlyContinue | Select-Object -ExpandProperty State"]
-        smb_res = run_hidden(cmd, capture_output=True, text=True, timeout=5)
-        if "Enabled" in smb_res.stdout:
-            smbv1_disabled = False
-    except Exception:
-        pass
+    smbv1_disabled = _smb1_disabled(deep=deep)
 
     checks.append({
         "category": "Protocol Hardening",
@@ -215,4 +383,25 @@ def audit_system_hardening() -> Tuple[List[dict], int]:
     max_possible = sum(c["max_points"] for c in checks)
     score = int((total_points / max_possible) * 100) if max_possible > 0 else 75
 
+    return checks, score
+
+
+def get_hardening_audit(
+    max_age_seconds: float = 300.0, force: bool = False, deep: bool = False
+) -> Tuple[List[dict], int]:
+    """Returns a cached hardening audit, running the expensive checks only when stale."""
+    if not force:
+        with _HARDENING_CACHE_LOCK:
+            checks = _HARDENING_CACHE["checks"]
+            if (
+                checks is not None
+                and time.monotonic() - _HARDENING_CACHE["timestamp"] <= max_age_seconds
+            ):
+                return checks, _HARDENING_CACHE["score"]
+
+    checks, score = audit_system_hardening(deep=deep)
+    with _HARDENING_CACHE_LOCK:
+        _HARDENING_CACHE["checks"] = checks
+        _HARDENING_CACHE["score"] = score
+        _HARDENING_CACHE["timestamp"] = time.monotonic()
     return checks, score

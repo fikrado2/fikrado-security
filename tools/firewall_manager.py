@@ -3,32 +3,16 @@ Fikrado Security - Windows Firewall Manager
 View and toggle firewall profiles (Domain, Private, Public), view active rules, and add rules.
 """
 from typing import Dict, List, Tuple
-from core.subprocess_utils import run_hidden
 from core.logger import logger
+from core.subprocess_utils import run_hidden
+from core.system_info import get_firewall_profiles_status
 
 
 class FirewallManager:
 
-    def get_profiles_status(self) -> Dict[str, bool]:
+    def get_profiles_status(self, deep: bool = False) -> Dict[str, bool]:
         """Returns enabled state for Domain, Private, and Public profiles."""
-        status = {"Domain": True, "Private": True, "Public": True}
-        try:
-            res = run_hidden(["netsh", "advfirewall", "show", "allprofiles", "state"], capture_output=True, text=True, timeout=5)
-            if res.returncode == 0:
-                current_profile = None
-                for line in res.stdout.splitlines():
-                    line = line.strip()
-                    if "Domain Profile Settings" in line:
-                        current_profile = "Domain"
-                    elif "Private Profile Settings" in line:
-                        current_profile = "Private"
-                    elif "Public Profile Settings" in line:
-                        current_profile = "Public"
-                    elif current_profile and "State" in line:
-                        status[current_profile] = "ON" in line.upper()
-        except Exception as e:
-            logger.error(f"Error querying firewall profiles: {e}")
-        return status
+        return get_firewall_profiles_status(deep=deep)
 
     def toggle_profile(self, profile: str, enable: bool) -> Tuple[bool, str]:
         """Toggles a specific profile or all profiles on/off."""

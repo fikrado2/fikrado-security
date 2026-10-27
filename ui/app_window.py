@@ -32,27 +32,14 @@ from config.constants import (
     SOCIAL_LINKS,
 )
 from config.settings import SettingsManager
+from core.logger import logger
 from tools.realtime_guard import realtime_guard
 from ui.components.ambient_background import AmbientBackground
+from ui.components.loading_overlay import LoadingOverlay
 from ui.components.title_bar import CustomTitleBar
 from ui.components.toast import ToastNotification
-from ui.effects import (
-    apply_text_glow,
-    decorate_text_glow,
-    fade_in,
-    pulse_glow,
-    update_glow,
-)
+from ui.effects import apply_text_glow, update_glow
 from ui.icons import load_icon, refresh_icon_label, set_icon
-from ui.pages.ai_scan_page import AIScanPage
-from ui.pages.dashboard_page import DashboardPage
-from ui.pages.port_scanner_page import PortScannerPage
-from ui.pages.quarantine_page import QuarantinePage
-from ui.pages.reports_page import ReportsPage
-from ui.pages.scan_page import ScanPage
-from ui.pages.settings_page import SettingsPage
-from ui.pages.tools_hub_page import ToolsHubPage
-from ui.pages.vuln_page import VulnPage
 from ui.win_effects import apply_window_effects
 
 
@@ -69,6 +56,36 @@ class FikradoMainWindow(QMainWindow):
         self._force_quit = False
         self._tray_hint_shown = False
         self._native_chrome_applied = False
+        self._navigating = False
+        self._pending_nav_index: int | None = None
+        self._pending_ai_threat: dict | None = None
+        self._pages: dict[int, QWidget] = {}
+        self._page_titles = {
+            0: "Security Dashboard",
+            1: "Quick Scan",
+            2: "Full Scan",
+            3: "Custom Scan",
+            4: "Port Scanner",
+            5: "Updates & Vulnerabilities",
+            6: "AI Neural Scan",
+            7: "Security Tools",
+            8: "Quarantine Vault",
+            9: "Audit Reports",
+            10: "Settings",
+        }
+        self._page_factories = {
+            0: self._create_dashboard_page,
+            1: lambda: self._create_scan_page("Quick"),
+            2: lambda: self._create_scan_page("Full"),
+            3: lambda: self._create_scan_page("Custom"),
+            4: self._create_ports_page,
+            5: self._create_vuln_page,
+            6: self._create_ai_page,
+            7: self._create_tools_page,
+            8: self._create_quarantine_page,
+            9: self._create_reports_page,
+            10: self._create_settings_page,
+        }
         self.tray_icon: QSystemTrayIcon | None = None
         self._tray_menu: QMenu | None = None
         self._tray_protection_action: QAction | None = None
@@ -82,6 +99,7 @@ class FikradoMainWindow(QMainWindow):
         self._init_tray()
         realtime_guard.signals.guard_status_changed.connect(self._on_guard_status)
         self._on_guard_status(realtime_guard.is_active, realtime_guard.scope_summary())
+        QTimer.singleShot(0, lambda: self.navigate_to_page(0))
 
     # --------------------------------------------------------------------- UI
     def _init_ui(self):
@@ -107,35 +125,69 @@ class FikradoMainWindow(QMainWindow):
 
         self.stacked_pages = QStackedWidget()
         self.stacked_pages.setObjectName("PageStack")
-
-        self.page_dashboard = DashboardPage(self)
-        self.page_quick_scan = ScanPage(default_mode="Quick", parent=self)
-        self.page_full_scan = ScanPage(default_mode="Full", parent=self)
-        self.page_custom_scan = ScanPage(default_mode="Custom", parent=self)
-        self.page_ports = PortScannerPage(self)
-        self.page_vuln = VulnPage(self)
-        self.page_ai = AIScanPage(self)
-        self.page_tools = ToolsHubPage(self)
-        self.page_quarantine = QuarantinePage(self)
-        self.page_reports = ReportsPage(self)
-        self.page_settings = SettingsPage(self)
-
-        self.page_dashboard.navigate_to_page.connect(self.navigate_to_page)
-        self.page_quick_scan.request_ai_explain.connect(self._on_ai_explain_requested)
-        self.page_full_scan.request_ai_explain.connect(self._on_ai_explain_requested)
-        self.page_custom_scan.request_ai_explain.connect(self._on_ai_explain_requested)
-
-        for page in (
-            self.page_dashboard, self.page_quick_scan, self.page_full_scan,
-            self.page_custom_scan, self.page_ports, self.page_vuln, self.page_ai,
-            self.page_tools, self.page_quarantine, self.page_reports, self.page_settings,
-        ):
-            self.stacked_pages.addWidget(page)
+        self.loading_overlay = LoadingOverlay(self.stacked_pages, "Preparing workspace…")
 
         body_layout.addWidget(self.stacked_pages, 1)
         root_layout.addLayout(body_layout)
 
-        decorate_text_glow(self.central_widget)
+    # ------------------------------------------------------- lazy page loading
+    def _create_dashboard_page(self):
+        from ui.pages.dashboard_page import DashboardPage
+        return DashboardPage(self)
+
+    def _create_scan_page(self, mode: str):
+        from ui.pages.scan_page import ScanPage
+        return ScanPage(default_mode=mode, parent=self)
+
+    def _create_ports_page(self):
+        from ui.pages.port_scanner_page import PortScannerPage
+        return PortScannerPage(self)
+
+    def _create_vuln_page(self):
+        from ui.pages.vuln_page import VulnPage
+        return VulnPage(self)
+
+    def _create_ai_page(self):
+        from ui.pages.ai_scan_page import AIScanPage
+        return AIScanPage(self)
+
+    def _create_tools_page(self):
+        from ui.pages.tools_hub_page import ToolsHubPage
+        return ToolsHubPage(self)
+
+    def _create_quarantine_page(self):
+        from ui.pages.quarantine_page import QuarantinePage
+        return QuarantinePage(self)
+
+    def _create_reports_page(self):
+        from ui.pages.reports_page import ReportsPage
+        return ReportsPage(self)
+
+    def _create_settings_page(self):
+        from ui.pages.settings_page import SettingsPage
+        return SettingsPage(self)
+
+    def _create_page(self, index: int) -> QWidget | None:
+        factory = self._page_factories.get(index)
+        if factory is None:
+            return None
+
+        try:
+            page = factory()
+        except Exception as exc:
+            logger.exception("Failed to create page %s", index)
+            ToastNotification(self, "Unable to open page", str(exc), "error")
+            return None
+
+        self._pages[index] = page
+
+        if index == 0:
+            page.navigate_to_page.connect(self.navigate_to_page)
+        elif index in (1, 2, 3):
+            page.request_ai_explain.connect(self._on_ai_explain_requested)
+
+        self.stacked_pages.addWidget(page)
+        return page
 
     def _create_sidebar(self) -> QWidget:
         sidebar = QFrame()
@@ -157,7 +209,6 @@ class FikradoMainWindow(QMainWindow):
             logo_lbl.setFixedSize(38, 38)
             logo_lbl.setStyleSheet("background: transparent; border: none;")
             logo_glow = apply_text_glow(logo_lbl, "#FFD93D", blur=20, opacity=135)
-            pulse_glow(logo_glow, min_blur=12, max_blur=24, duration=2800)
             brand_row.addWidget(logo_lbl)
 
         brand_text_layout = QVBoxLayout()
@@ -272,7 +323,6 @@ class FikradoMainWindow(QMainWindow):
         self.status_icon.setStyleSheet("background: transparent; border: none;")
         refresh_icon_label(self.status_icon, "shield", 16)
         self.status_glow = apply_text_glow(self.status_icon, COLOR_AURORA_GREEN, blur=14, opacity=210)
-        pulse_glow(self.status_glow, min_blur=8, max_blur=18, duration=1800)
         sf_layout.addWidget(self.status_icon)
 
         self.status_text = QLabel("Shield Active")
@@ -371,25 +421,68 @@ class FikradoMainWindow(QMainWindow):
             )
 
     # --------------------------------------------------------------- navigation
-    def navigate_to_page(self, index: int):
-        self.stacked_pages.setCurrentIndex(index)
+    def _activate_page(self, index: int, page: QWidget):
+        self.stacked_pages.setCurrentWidget(page)
         if index in self.nav_buttons:
             self.nav_buttons[index].setChecked(True)
 
-        fade_in(self.stacked_pages.currentWidget(), 240)
-
         if index == 0:
-            self.page_dashboard.refresh_dashboard()
+            page.refresh_dashboard()
         elif index == 1:
-            self.page_quick_scan.set_mode("Quick")
+            page.set_mode("Quick")
         elif index == 2:
-            self.page_full_scan.set_mode("Full")
+            page.set_mode("Full")
         elif index == 3:
-            self.page_custom_scan.set_mode("Custom")
+            page.set_mode("Custom")
+
+    def navigate_to_page(self, index: int):
+        if index not in self._page_factories:
+            return
+
+        if self._navigating:
+            self._pending_nav_index = index
+            return
+
+        page = self._pages.get(index)
+        if page is not None:
+            self._activate_page(index, page)
+            return
+
+        # First visit: paint the spinner immediately, then build the page.
+        self._navigating = True
+        if index in self.nav_buttons:
+            self.nav_buttons[index].setChecked(True)
+        self.loading_overlay.show_message(
+            f"Preparing {self._page_titles.get(index, 'workspace')}…"
+        )
+        QTimer.singleShot(16, lambda: self._finish_page_creation(index))
+
+    def _finish_page_creation(self, index: int):
+        page = self._create_page(index)
+        try:
+            if page is not None:
+                self._activate_page(index, page)
+                if index == 6 and self._pending_ai_threat is not None:
+                    threat = self._pending_ai_threat
+                    self._pending_ai_threat = None
+                    page.explain_external_threat(threat)
+        finally:
+            self._navigating = False
+            self.loading_overlay.hide_overlay()
+            pending = self._pending_nav_index
+            self._pending_nav_index = None
+            if pending is not None and pending != index:
+                QTimer.singleShot(0, lambda: self.navigate_to_page(pending))
 
     def _on_ai_explain_requested(self, threat: dict):
-        self.navigate_to_page(6)
-        self.page_ai.explain_external_threat(threat)
+        self._pending_ai_threat = threat
+        page = self._pages.get(6)
+        if page is not None:
+            self.navigate_to_page(6)
+            page.explain_external_threat(threat)
+            self._pending_ai_threat = None
+        else:
+            self.navigate_to_page(6)
 
     # ------------------------------------------------------------------ window
     def showEvent(self, event):

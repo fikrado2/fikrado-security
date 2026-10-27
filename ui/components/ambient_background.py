@@ -2,13 +2,13 @@
 Fikrado Security - Ambient Background
 
 Paints the layered deep-space gradient, coloured aurora blooms and a soft vignette
-that the glass surfaces sit on top of.  Painting is resolution independent and
-re-runs on every resize.
+that the glass surfaces sit on top of.  The backdrop is cached as a pixmap so page
+switches only cost a single blit instead of re-running five large gradients.
 """
 from __future__ import annotations
 
 from PySide6.QtCore import QPointF, Qt
-from PySide6.QtGui import QColor, QLinearGradient, QPainter, QPen, QRadialGradient
+from PySide6.QtGui import QColor, QLinearGradient, QPainter, QPen, QPixmap, QRadialGradient
 from PySide6.QtWidgets import QWidget
 
 
@@ -20,9 +20,24 @@ class AmbientBackground(QWidget):
         self.setObjectName("AppRoot")
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, False)
         self.setAutoFillBackground(False)
+        self._cache: QPixmap | None = None
+        self._cache_key: tuple[int, int, float] | None = None
 
-    def paintEvent(self, event):  # noqa: N802 - Qt naming
-        painter = QPainter(self)
+    def resizeEvent(self, event):  # noqa: N802 - Qt naming
+        self._cache = None
+        self._cache_key = None
+        super().resizeEvent(event)
+
+    def _render_backdrop(self) -> QPixmap:
+        dpr = self.devicePixelRatioF()
+        pixmap = QPixmap(
+            max(1, int(self.width() * dpr)),
+            max(1, int(self.height() * dpr)),
+        )
+        pixmap.setDevicePixelRatio(dpr)
+        pixmap.fill(Qt.GlobalColor.transparent)
+
+        painter = QPainter(pixmap)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
 
         rect = self.rect()
@@ -72,3 +87,13 @@ class AmbientBackground(QWidget):
         painter.setPen(QPen(QColor(0, 0, 0, 120), 1))
         painter.drawLine(0, height - 1, width, height - 1)
         painter.end()
+        return pixmap
+
+    def paintEvent(self, event):  # noqa: N802 - Qt naming
+        key = (self.width(), self.height(), self.devicePixelRatioF())
+        if self._cache is None or self._cache_key != key:
+            self._cache = self._render_backdrop()
+            self._cache_key = key
+
+        painter = QPainter(self)
+        painter.drawPixmap(0, 0, self._cache)

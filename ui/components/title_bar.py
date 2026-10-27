@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (
 
 from config.constants import APP_VERSION, LOGO_PNG
 from core.system_info import is_admin
-from ui.effects import apply_text_glow, pulse_glow
+from ui.effects import apply_text_glow
 from ui.icons import load_icon
 
 
@@ -75,7 +75,6 @@ class CustomTitleBar(QFrame):
         self.logo_label.setFixedSize(26, 26)
         self.logo_label.setStyleSheet("background: transparent; border: none;")
         logo_glow = apply_text_glow(self.logo_label, "#FFD93D", blur=18, opacity=130)
-        pulse_glow(logo_glow, min_blur=10, max_blur=20, duration=3000)
         layout.addWidget(self.logo_label)
 
         # 2. App title + publisher

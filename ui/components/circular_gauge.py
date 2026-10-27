@@ -30,6 +30,21 @@ class CircularSecurityGauge(QWidget):
         self._timeline.setUpdateInterval(16)
         self._timeline.frameChanged.connect(self._on_animation_frame)
 
+        # Build the fonts once.  ``setFamilies()`` with a fallback list is very
+        # expensive on first paint (seconds on some Windows font stacks), so we
+        # request a single family and let Qt substitute if it is unavailable.
+        self._score_font = QFont("Segoe UI Variable Display")
+        self._score_font.setPointSize(34)
+        self._score_font.setBold(True)
+
+        self._caption_font = QFont("Segoe UI")
+        self._caption_font.setPointSize(8)
+        self._caption_font.setBold(True)
+
+        self._badge_font = QFont("Segoe UI")
+        self._badge_font.setPointSize(7)
+        self._badge_font.setBold(True)
+
     def get_score(self) -> int:
         return self._score
 
@@ -133,26 +148,18 @@ class CircularSecurityGauge(QWidget):
             badge_color = QColor("#9BA3AF")
 
         # 4. Center score with a soft cyan halo
-        score_font = QFont("Segoe UI Variable Display")
-        score_font.setFamilies(["Segoe UI Variable Display", "Segoe UI", "Arial"])
-        score_font.setPointSize(34)
-        score_font.setBold(True)
         self._draw_glow_text(
             painter,
             QRectF(0, height * 0.235, width, 54),
             str(self._score),
-            score_font,
+            self._score_font,
             QColor("#ECEFF4"),
             QColor("#88C0D0"),
         )
 
         # 5. Caption
-        caption_font = QFont("Segoe UI")
-        caption_font.setFamilies(["Segoe UI Variable Text", "Segoe UI", "Arial"])
-        caption_font.setPointSize(8)
-        caption_font.setBold(True)
         painter.setPen(QColor("#9BA3AF"))
-        painter.setFont(caption_font)
+        painter.setFont(self._caption_font)
         painter.drawText(QRectF(0, height * 0.52, width, 18), Qt.AlignCenter, "SECURITY SCORE")
 
         # 6. Status badge pill
@@ -161,9 +168,5 @@ class CircularSecurityGauge(QWidget):
         painter.setBrush(QColor(badge_color.red(), badge_color.green(), badge_color.blue(), 26))
         painter.drawRoundedRect(badge_rect, 10, 10)
         painter.setPen(badge_color)
-        badge_font = QFont("Segoe UI")
-        badge_font.setFamilies(["Segoe UI Variable Text", "Segoe UI", "Arial"])
-        badge_font.setPointSize(7)
-        badge_font.setBold(True)
-        painter.setFont(badge_font)
+        painter.setFont(self._badge_font)
         painter.drawText(badge_rect, Qt.AlignCenter, badge_text)

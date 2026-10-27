@@ -24,7 +24,8 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget
 )
-from core.system_info import audit_system_hardening
+from core.logger import logger
+from core.system_info import get_hardening_audit
 from tools.browser_hosts_check import browser_hosts_checker
 from tools.defender_control import defender_control
 from tools.dns_leak_test import dns_leak_tester
@@ -35,8 +36,10 @@ from tools.process_manager import process_manager
 from tools.realtime_guard import realtime_guard
 from tools.startup_manager import startup_manager
 from ui.components.cards import ThreatBadge
+from ui.components.loading_overlay import LoadingOverlay
 from ui.components.toast import ToastNotification
 from ui.icons import icon_label, load_icon, set_icon
+from ui.workers import FunctionWorker
 
 
 class ShredderWorker(QThread):
@@ -59,6 +62,11 @@ class ToolsHubPage(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self._workers = set()
+        self._active_tasks = set()
+        self._tab_overlays = {}
+        self._loaded_tabs = set()
+        self._loading_tabs = set()
         self._init_ui()
 
     def _init_ui(self):
@@ -107,19 +115,85 @@ class ToolsHubPage(QWidget):
             ("Network & DNS", "dns", self._build_dns_tab()),
         ]
 
-        for label, icon_name, panel in tools:
+        for index, (label, icon_name, panel) in enumerate(tools):
             item = QListWidgetItem(label)
             item.setIcon(load_icon(icon_name, 18))
             item.setSizeHint(QSize(0, 40))
             self.tool_list.addItem(item)
             self.tool_stack.addWidget(panel)
+            self._tab_overlays[index] = LoadingOverlay(panel, "Loading tool data…")
 
-        self.tool_list.currentRowChanged.connect(self.tool_stack.setCurrentIndex)
+        self.tool_list.currentRowChanged.connect(self._on_tool_selected)
         self.tool_list.setCurrentRow(0)
 
         tools_split.addWidget(self.tool_list)
         tools_split.addWidget(self.tool_stack, 1)
         layout.addLayout(tools_split)
+
+    # --------------------------------------------------------- async plumbing
+    def _on_tool_selected(self, index: int):
+        if index < 0:
+            return
+        self.tool_stack.setCurrentIndex(index)
+        if index in self._loaded_tabs or index in self._loading_tabs:
+            return
+        self._load_tab(index)
+
+    def _load_tab(self, index: int):
+        loaders = {
+            0: self._load_defender_status,
+            1: self._load_firewall_status,
+            2: self._load_startup_items,
+            3: self._load_processes,
+            4: self._load_browser_data,
+            7: self._load_hardening_audit,
+        }
+        loader = loaders.get(index)
+        if loader is None:
+            self._loaded_tabs.add(index)
+            return
+
+        self._loading_tabs.add(index)
+        loader(index)
+
+    def _start_task(self, key, overlay, message, fn, on_success, tab_index=None):
+        """Run a slow query off the UI thread and refresh the matching panel."""
+        if key in self._active_tasks:
+            return
+
+        self._active_tasks.add(key)
+        if overlay is not None:
+            overlay.show_message(message)
+
+        worker = FunctionWorker(fn, self)
+        self._workers.add(worker)
+
+        def finish():
+            self._workers.discard(worker)
+            self._active_tasks.discard(key)
+            if overlay is not None:
+                overlay.hide_overlay()
+            if tab_index is not None:
+                self._loading_tabs.discard(tab_index)
+
+        def on_ok(result):
+            finish()
+            try:
+                on_success(result)
+            except Exception as exc:
+                logger.exception("Tools Hub panel update failed")
+                ToastNotification(self.window(), "Tools Hub", str(exc), "error")
+                return
+            if tab_index is not None:
+                self._loaded_tabs.add(tab_index)
+
+        def on_error(message):
+            finish()
+            ToastNotification(self.window(), "Tools Hub", message, "error")
+
+        worker.finished_ok.connect(on_ok)
+        worker.failed.connect(on_error)
+        worker.start()
 
     # ==================== 1. REALTIME & DEFENDER ====================
     def _build_realtime_tab(self) -> QWidget:
@@ -165,10 +239,9 @@ class ToolsHubPage(QWidget):
         c2_title.setStyleSheet("font-size: 16px; font-weight: bold; color: #88C0D0;")
         c2_layout.addWidget(c2_title)
 
-        def_stat = defender_control.get_status()
-        def_lbl = QLabel(f"Defender Real-Time Protection: {'ENABLED' if def_stat.get('realtime_protection') else 'DISABLED'}")
-        def_lbl.setStyleSheet("color: #ECEFF4; font-size: 13px;")
-        c2_layout.addWidget(def_lbl)
+        self.def_status_lbl = QLabel("Defender Real-Time Protection: Checking…")
+        self.def_status_lbl.setStyleSheet("color: #D8DEE9; font-size: 13px;")
+        c2_layout.addWidget(self.def_status_lbl)
 
         def_btns = QHBoxLayout()
         btn_def_scan = QPushButton("Launch Defender Quick Scan")
@@ -186,6 +259,8 @@ class ToolsHubPage(QWidget):
         c2_layout.addLayout(def_btns)
         l.addWidget(card2)
         l.addStretch()
+
+        self.defender_overlay = LoadingOverlay(card2, "Querying Windows Defender…")
         self._refresh_realtime_status()
         return w
 
@@ -216,15 +291,48 @@ class ToolsHubPage(QWidget):
             realtime_guard.start_guard()
         self._refresh_realtime_status()
 
+    def _load_defender_status(self, tab_index=0):
+        self._start_task(
+            "defender_status",
+            getattr(self, "defender_overlay", None),
+            "Querying Windows Defender status…",
+            defender_control.get_status,
+            self._apply_defender_status,
+            tab_index,
+        )
+
+    def _apply_defender_status(self, status: dict):
+        enabled = bool(status.get("realtime_protection"))
+        self.def_status_lbl.setText(
+            f"Defender Real-Time Protection: {'ENABLED' if enabled else 'DISABLED'}"
+        )
+        self.def_status_lbl.setStyleSheet(
+            f"color: {'#A3BE8C' if enabled else '#BF616A'}; font-size: 13px; font-weight: bold;"
+        )
+
     def _run_defender_quick_scan(self):
         ToastNotification(self.window(), "Windows Defender", "Initiating Defender scan...", "info")
-        ok, msg = defender_control.trigger_quick_scan()
-        ToastNotification(self.window(), "Defender Scan", msg, "success" if ok else "error")
+        self._start_task(
+            "defender_scan",
+            getattr(self, "defender_overlay", None),
+            "Launching Windows Defender quick scan…",
+            defender_control.trigger_quick_scan,
+            lambda result: ToastNotification(
+                self.window(), "Defender Scan", result[1], "success" if result[0] else "error"
+            ),
+        )
 
     def _update_defender_sigs(self):
         ToastNotification(self.window(), "Windows Defender", "Downloading latest virus definitions...", "info")
-        ok, msg = defender_control.update_signatures()
-        ToastNotification(self.window(), "Signature Update", msg, "success" if ok else "error")
+        self._start_task(
+            "defender_update",
+            getattr(self, "defender_overlay", None),
+            "Updating Windows Defender signatures…",
+            defender_control.update_signatures,
+            lambda result: ToastNotification(
+                self.window(), "Signature Update", result[1], "success" if result[0] else "error"
+            ),
+        )
 
     # ==================== 2. FIREWALL ====================
     def _build_firewall_tab(self) -> QWidget:
@@ -286,17 +394,28 @@ class ToolsHubPage(QWidget):
         self.fw_table.setEditTriggers(QTableWidget.NoEditTriggers)
         l.addWidget(self.fw_table)
 
-        self._refresh_firewall_status()
         return w
 
-    def _refresh_firewall_status(self):
-        status = firewall_manager.get_profiles_status()
+    def _load_firewall_status(self, tab_index=1):
+        self._start_task(
+            "firewall_status",
+            self._tab_overlays.get(1),
+            "Reading firewall profiles and rules…",
+            lambda: (
+                firewall_manager.get_profiles_status(),
+                firewall_manager.get_recent_rules(limit=30),
+            ),
+            self._apply_firewall_status,
+            tab_index,
+        )
+
+    def _apply_firewall_status(self, result):
+        status, rules = result
         dom = "ON" if status.get("Domain") else "OFF"
         pri = "ON" if status.get("Private") else "OFF"
         pub = "ON" if status.get("Public") else "OFF"
         self.fw_status_lbl.setText(f"Firewall Profiles: Domain ({dom}) | Private ({pri}) | Public ({pub})")
 
-        rules = firewall_manager.get_recent_rules(limit=30)
         self.fw_table.setRowCount(0)
         for r in rules:
             row = self.fw_table.rowCount()
@@ -306,10 +425,18 @@ class ToolsHubPage(QWidget):
             self.fw_table.setItem(row, 2, QTableWidgetItem(r.get("Action", "Allow")))
             self.fw_table.setItem(row, 3, QTableWidgetItem(r.get("Profiles", "All")))
 
+    def _refresh_firewall_status(self):
+        self._load_firewall_status(tab_index=1)
+
     def _toggle_firewall(self, prof: str, enable: bool):
-        ok, msg = firewall_manager.toggle_profile(prof, enable)
-        ToastNotification(self.window(), "Firewall Updated", msg, "success" if ok else "error")
-        self._refresh_firewall_status()
+        self._start_task(
+            "firewall_toggle",
+            self._tab_overlays.get(1),
+            "Updating Windows Firewall…",
+            lambda: firewall_manager.toggle_profile(prof, enable),
+            self._on_firewall_action_done,
+            tab_index=1,
+        )
 
     def _add_firewall_rule(self):
         rname = self.rule_name_inp.text().strip()
@@ -318,8 +445,18 @@ class ToolsHubPage(QWidget):
         if not rname or not port_s.isdigit():
             ToastNotification(self.window(), "Input Error", "Please provide a valid rule name and numeric port.", "warning")
             return
-        ok, msg = firewall_manager.add_block_rule(rname, int(port_s), proto)
-        ToastNotification(self.window(), "Rule Result", msg, "success" if ok else "error")
+        self._start_task(
+            "firewall_add",
+            self._tab_overlays.get(1),
+            "Creating inbound block rule…",
+            lambda: firewall_manager.add_block_rule(rname, int(port_s), proto),
+            self._on_firewall_action_done,
+            tab_index=1,
+        )
+
+    def _on_firewall_action_done(self, result):
+        ok, msg = result
+        ToastNotification(self.window(), "Firewall Updated", msg, "success" if ok else "error")
         self._refresh_firewall_status()
 
     # ==================== 3. STARTUP MANAGER ====================
@@ -344,11 +481,19 @@ class ToolsHubPage(QWidget):
         self.startup_table.setEditTriggers(QTableWidget.NoEditTriggers)
         l.addWidget(self.startup_table)
 
-        self._refresh_startup_items()
         return w
 
-    def _refresh_startup_items(self):
-        items = startup_manager.list_startup_items()
+    def _load_startup_items(self, tab_index=2):
+        self._start_task(
+            "startup_items",
+            self._tab_overlays.get(2),
+            "Reading startup entries…",
+            startup_manager.list_startup_items,
+            self._apply_startup_items,
+            tab_index,
+        )
+
+    def _apply_startup_items(self, items):
         self.startup_items_cache = items
         self.startup_table.setRowCount(0)
         for idx, it in enumerate(items):
@@ -368,6 +513,9 @@ class ToolsHubPage(QWidget):
             t_btn.setProperty("secondary", True)
             t_btn.clicked.connect(lambda _, item=it: self._toggle_startup(item))
             self.startup_table.setCellWidget(row, 4, t_btn)
+
+    def _refresh_startup_items(self):
+        self._load_startup_items(tab_index=2)
 
     def _toggle_startup(self, item: dict):
         new_state = not item.get("enabled", True)
@@ -408,12 +556,25 @@ class ToolsHubPage(QWidget):
         self.proc_table.setEditTriggers(QTableWidget.NoEditTriggers)
         l.addWidget(self.proc_table)
 
-        self._refresh_processes()
+        self.proc_cache = []
         return w
 
+    def _load_processes(self, tab_index=3):
+        self._start_task(
+            "processes",
+            self._tab_overlays.get(3),
+            "Enumerating running processes…",
+            process_manager.list_processes,
+            self._apply_processes,
+            tab_index,
+        )
+
+    def _apply_processes(self, data):
+        self.proc_cache = data
+        self._populate_proc_table(data)
+
     def _refresh_processes(self):
-        self.proc_cache = process_manager.list_processes()
-        self._populate_proc_table(self.proc_cache)
+        self._load_processes(tab_index=3)
 
     def _populate_proc_table(self, data: list):
         self.proc_table.setRowCount(0)
@@ -468,11 +629,9 @@ class ToolsHubPage(QWidget):
         h_title.setStyleSheet("font-size: 15px; font-weight: bold; color: #88C0D0;")
         hc_l.addWidget(h_title)
 
-        is_clean, lines, flagged = browser_hosts_checker.check_hosts_file()
-        status_text = "OK — Hosts file is clean and uncorrupted." if is_clean else f"Warning — {len(flagged)} suspicious domain redirects flagged!"
-        h_status = QLabel(status_text)
-        h_status.setStyleSheet(f"color: {'#A3BE8C' if is_clean else '#BF616A'}; font-weight: bold;")
-        hc_l.addWidget(h_status)
+        self.hosts_status_lbl = QLabel("Checking hosts file integrity…")
+        self.hosts_status_lbl.setStyleSheet("color: #D8DEE9; font-weight: bold;")
+        hc_l.addWidget(self.hosts_status_lbl)
 
         h_btns = QHBoxLayout()
         btn_clean_hosts = QPushButton("Restore Clean Default Hosts File")
@@ -501,15 +660,39 @@ class ToolsHubPage(QWidget):
 
         l.addWidget(ext_card)
 
-        self._refresh_extensions()
         return w
 
     def _restore_hosts(self):
         ok, msg = browser_hosts_checker.restore_default_hosts()
         ToastNotification(self.window(), "Hosts File", msg, "success" if ok else "error")
 
-    def _refresh_extensions(self):
-        exts = browser_hosts_checker.check_browser_extensions()
+    def _load_browser_data(self, tab_index=4):
+        self._start_task(
+            "browser_data",
+            self._tab_overlays.get(4),
+            "Auditing hosts file and browser extensions…",
+            lambda: (
+                browser_hosts_checker.check_hosts_file(),
+                browser_hosts_checker.check_browser_extensions(),
+            ),
+            self._apply_browser_data,
+            tab_index,
+        )
+
+    def _apply_browser_data(self, result):
+        hosts, extensions = result
+        is_clean, lines, flagged = hosts
+        if is_clean:
+            self.hosts_status_lbl.setText("OK — Hosts file is clean and uncorrupted.")
+            self.hosts_status_lbl.setStyleSheet("color: #A3BE8C; font-weight: bold;")
+        else:
+            self.hosts_status_lbl.setText(
+                f"Warning — {len(flagged)} suspicious domain redirects flagged!"
+            )
+            self.hosts_status_lbl.setStyleSheet("color: #BF616A; font-weight: bold;")
+        self._populate_extensions(extensions)
+
+    def _populate_extensions(self, exts):
         self.ext_table.setRowCount(0)
         for e in exts:
             row = self.ext_table.rowCount()
@@ -524,6 +707,9 @@ class ToolsHubPage(QWidget):
 
             perms_str = ", ".join(e.get("risky_permissions", [])) or "Standard Permissions"
             self.ext_table.setItem(row, 4, QTableWidgetItem(perms_str))
+
+    def _refresh_extensions(self):
+        self._load_browser_data(tab_index=4)
 
     # ==================== 6. FILE SHREDDER ====================
     def _build_shredder_tab(self) -> QWidget:
@@ -704,7 +890,16 @@ class ToolsHubPage(QWidget):
         if not pwd:
             ToastNotification(self.window(), "Empty Password", "Enter a password to check against breach records.", "warning")
             return
-        is_pwned, count, msg = check_haveibeenpwned(pwd)
+        self._start_task(
+            "hibp_check",
+            self._tab_overlays.get(6),
+            "Checking breach databases via k-anonymity…",
+            lambda: check_haveibeenpwned(pwd),
+            self._apply_hibp_result,
+        )
+
+    def _apply_hibp_result(self, result):
+        is_pwned, count, msg = result
         color = "#BF616A" if is_pwned else "#A3BE8C"
         self.breach_result_box.setHtml(f"<p style='color: {color}; font-weight: bold; margin: 0;'>{msg}</p>")
         ToastNotification(self.window(), "Breach Audit", msg, "error" if is_pwned else "success")
@@ -735,11 +930,20 @@ class ToolsHubPage(QWidget):
         self.hard_table.setEditTriggers(QTableWidget.NoEditTriggers)
         l.addWidget(self.hard_table)
 
-        self._refresh_hardening()
         return w
 
-    def _refresh_hardening(self):
-        checks, score = audit_system_hardening()
+    def _load_hardening_audit(self, tab_index=7):
+        self._start_task(
+            "hardening_audit",
+            self._tab_overlays.get(7),
+            "Running Windows hardening audit…",
+            lambda: get_hardening_audit(max_age_seconds=300),
+            self._apply_hardening_audit,
+            tab_index,
+        )
+
+    def _apply_hardening_audit(self, result):
+        checks, score = result
         self.hard_table.setRowCount(0)
         for c in checks:
             row = self.hard_table.rowCount()
@@ -752,6 +956,9 @@ class ToolsHubPage(QWidget):
             self.hard_table.setItem(row, 2, QTableWidgetItem(c.get("name", "")))
             self.hard_table.setItem(row, 3, QTableWidgetItem(c.get("detail", "")))
             self.hard_table.setItem(row, 4, QTableWidgetItem(c.get("remediation", "")))
+
+    def _refresh_hardening(self):
+        self._load_hardening_audit(tab_index=7)
 
     # ==================== 9. NETWORK & DNS ====================
     def _build_dns_tab(self) -> QWidget:
@@ -790,9 +997,20 @@ class ToolsHubPage(QWidget):
         return w
 
     def _run_dns_diagnostic(self):
-        ifaces = dns_leak_tester.get_network_interfaces()
-        dns_servers = dns_leak_tester.get_configured_dns_servers()
-        ext_info = dns_leak_tester.check_public_ip_and_leak()
+        self._start_task(
+            "dns_diagnostic",
+            self._tab_overlays.get(8),
+            "Resolving interfaces, DNS servers and public IP…",
+            lambda: (
+                dns_leak_tester.get_network_interfaces(),
+                dns_leak_tester.get_configured_dns_servers(),
+                dns_leak_tester.check_public_ip_and_leak(),
+            ),
+            self._apply_dns_diagnostic,
+        )
+
+    def _apply_dns_diagnostic(self, result):
+        ifaces, dns_servers, ext_info = result
 
         dns_str = ", ".join(dns_servers) if dns_servers else "None (DHCP Auto)"
         summary = (

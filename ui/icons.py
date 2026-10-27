@@ -68,12 +68,18 @@ def icon_pixmap(name: str, size: int = 24, tint: str | None = None, dpr: float =
     return _render_svg(name, int(size), tint, float(dpr))
 
 
-def load_icon(name: str, size: int = 24, tint: str | None = None) -> QIcon:
-    """Build a multi-resolution QIcon from the vector source."""
+@lru_cache(maxsize=256)
+def _build_icon(name: str, size: int, tint: str | None) -> QIcon:
+    """Cache assembled QIcons because each one renders three pixmap scales."""
     icon = QIcon()
     for scale in (1.0, 2.0, 3.0):
         icon.addPixmap(_render_svg(name, int(size), tint, scale))
     return icon
+
+
+def load_icon(name: str, size: int = 24, tint: str | None = None) -> QIcon:
+    """Build a multi-resolution QIcon from the vector source (cached)."""
+    return _build_icon(name, int(size), tint)
 
 
 def set_icon(button: QAbstractButton, name: str, size: int = 18, tint: str | None = None) -> None:

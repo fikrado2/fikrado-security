@@ -1,7 +1,7 @@
 # Fikrado Security - Enterprise Windows Threat Defense Platform
 
 [![Platform](https://img.shields.io/badge/Platform-Windows%2010%20%2F%2011-blue.svg)](https://microsoft.com/windows)
-[![Version](https://img.shields.io/badge/Version-1.2.0-FFD93D.svg)](https://github.com/fikrado2/fikrado-security/releases)
+[![Version](https://img.shields.io/badge/Version-2.6.87-FFD93D.svg)](https://github.com/fikrado2/fikrado-security/releases)
 [![Python](https://img.shields.io/badge/Python-3.11%2B-blue.svg)](https://python.org)
 [![Framework](https://img.shields.io/badge/UI-PySide6%20%28Qt%29-green.svg)](https://qt.io)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
@@ -10,13 +10,18 @@
 
 **Publisher:** Fikrado Security · **Website:** [fikrado2.github.io](https://fikrado2.github.io) · **LinkedIn:** [Yahye Abdirahman](https://www.linkedin.com/in/yahye-abdirahman/) · **GitHub:** [fikrado-orgnasation](https://github.com/fikrado-orgnasation/)
 
-### What's New in 1.2.0
+### What's New in 2.6.87
+- **Instant page switching:** pages are created on first visit instead of all at startup, and the expensive whole-page fade effect was removed.
+- **Visible loading feedback:** a glass spinner overlay appears while a page is prepared and while background security data is being collected.
+- **Non-blocking security audits:** Defender, firewall, startup, process, browser, hardening and DNS queries now run off the UI thread and are cached, so the interface never freezes.
+- **Faster startup and rendering:** icon rendering is cached, global text-glow traversal was removed, and the dashboard reuses its last audit result.
+- **Stable release line:** this build is pinned at **2.6.87** and keeps that version number for subsequent fixes.
 - **Glass + 3D interface:** layered translucent surfaces, gradient highlights, soft depth and a painted ambient backdrop across every page.
 - **Colored vector icons:** 59 hand-tuned SVG icons replace every emoji in the interface, with semantic colors for safe, warning, high and critical states.
 - **Wider real-time shield:** watches user folders, startup persistence, new network listeners, removable drives and optional full drive roots — not just Downloads and Temp.
 - **Native Windows behavior:** rounded DWM window chrome, system tray presence, close-to-tray protection, and a live shield status pill.
 - **Silent background execution:** every PowerShell, netsh, winget, Defender and scanner command runs through a hidden-subprocess helper, so no console windows ever flash on screen.
-- **Release metadata:** embedded publisher, product name, icon and version information (`1.2.0.0`) in the Windows executable.
+- **Release metadata:** embedded publisher, product name, icon and version information (`2.6.87.0`) in the Windows executable.
 
 ---
 

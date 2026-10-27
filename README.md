@@ -48,6 +48,16 @@ Grab the latest prebuilt Windows binary from the [Releases page](https://github.
 
 ---
 
+## 🖼️ Screenshots
+
+### Desktop Application Interface
+![Fikrado Security Desktop UI](assets/screenshots/desktop.png)
+
+### Command-Line / Terminal View
+![Fikrado Security CLI](assets/screenshots/cli.png)
+
+---
+
 ## 🛡️ Core Features & Modular Architecture
 
 ```

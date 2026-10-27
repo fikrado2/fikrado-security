@@ -76,13 +76,13 @@ class VulnPage(QWidget):
             "and identifies unpatched applications with available upstream fixes."
         )
         disclaimer.setWordWrap(True)
-        disclaimer.setStyleSheet("color: #88C0D0; font-size: 12px; background-color: rgba(136, 192, 208, 0.1); padding: 8px 12px; border-radius: 6px; border-left: 4px solid #FFD93D;")
+        disclaimer.setStyleSheet("color: #88C0D0; font-size: 12px; background-color: rgba(136, 192, 208, 26); padding: 8px 12px; border-radius: 6px; border-left: 4px solid #FFD93D;")
         header.addWidget(disclaimer)
         layout.addLayout(header)
 
         # Top Control Row
         ctrl_row = QHBoxLayout()
-        self.refresh_btn = QPushButton("🔍 Scan for Vulnerabilities & Updates")
+        self.refresh_btn = QPushButton("🔍 Scan for Vulnerabilities && Updates")
         self.refresh_btn.setProperty("primary", True)
         self.refresh_btn.clicked.connect(self.start_audit)
         ctrl_row.addWidget(self.refresh_btn)
@@ -105,7 +105,18 @@ class VulnPage(QWidget):
 
         self.kev_table = QTableWidget(0, 6)
         self.kev_table.setHorizontalHeaderLabels(["Status", "Advisory CVE", "Product", "Vulnerability Title", "Date Added", "Required Mitigation"])
-        self.kev_table.horizontalHeader().setSectionResizeMode(3, QHeaderView.Stretch)
+        kev_header = self.kev_table.horizontalHeader()
+        kev_header.setSectionResizeMode(0, QHeaderView.Fixed)
+        kev_header.setSectionResizeMode(1, QHeaderView.Fixed)
+        kev_header.setSectionResizeMode(2, QHeaderView.Fixed)
+        kev_header.setSectionResizeMode(3, QHeaderView.Stretch)
+        kev_header.setSectionResizeMode(4, QHeaderView.Fixed)
+        kev_header.setSectionResizeMode(5, QHeaderView.Fixed)
+        self.kev_table.setColumnWidth(0, 78)
+        self.kev_table.setColumnWidth(1, 128)
+        self.kev_table.setColumnWidth(2, 148)
+        self.kev_table.setColumnWidth(4, 96)
+        self.kev_table.setColumnWidth(5, 210)
         self.kev_table.setEditTriggers(QTableWidget.NoEditTriggers)
         tk_layout.addWidget(self.kev_table)
         self.tabs.addTab(tab_kev, "Actively Exploited (CISA KEV)")
@@ -130,7 +141,11 @@ class VulnPage(QWidget):
 
         self.winget_table = QTableWidget(0, 4)
         self.winget_table.setHorizontalHeaderLabels(["Application Name", "Package ID", "Installed Version", "Available Version"])
-        self.winget_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
+        winget_header = self.winget_table.horizontalHeader()
+        winget_header.setSectionResizeMode(0, QHeaderView.Stretch)
+        winget_header.setSectionResizeMode(1, QHeaderView.Stretch)
+        winget_header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
+        winget_header.setSectionResizeMode(3, QHeaderView.ResizeToContents)
         self.winget_table.setSelectionBehavior(QTableWidget.SelectRows)
         self.winget_table.setEditTriggers(QTableWidget.NoEditTriggers)
         tw_layout.addWidget(self.winget_table)
@@ -143,7 +158,10 @@ class VulnPage(QWidget):
 
         self.hotfix_table = QTableWidget(0, 3)
         self.hotfix_table.setHorizontalHeaderLabels(["Hotfix KB Identifier", "Classification", "Installed Date"])
-        self.hotfix_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
+        hotfix_header = self.hotfix_table.horizontalHeader()
+        hotfix_header.setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        hotfix_header.setSectionResizeMode(1, QHeaderView.Stretch)
+        hotfix_header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
         self.hotfix_table.setEditTriggers(QTableWidget.NoEditTriggers)
         th_layout.addWidget(self.hotfix_table)
         self.tabs.addTab(tab_hotfixes, "Windows Security Hotfixes")
@@ -155,7 +173,10 @@ class VulnPage(QWidget):
 
         self.all_software_table = QTableWidget(0, 3)
         self.all_software_table.setHorizontalHeaderLabels(["Application Name", "Version", "Publisher"])
-        self.all_software_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
+        all_software_header = self.all_software_table.horizontalHeader()
+        all_software_header.setSectionResizeMode(0, QHeaderView.Stretch)
+        all_software_header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
+        all_software_header.setSectionResizeMode(2, QHeaderView.Stretch)
         self.all_software_table.setEditTriggers(QTableWidget.NoEditTriggers)
         ta_layout.addWidget(self.all_software_table)
         self.tabs.addTab(tab_all, "Software Inventory")
@@ -183,7 +204,7 @@ class VulnPage(QWidget):
 
     def _on_audit_finished(self, software, cisa_matches, winget_upgrades, hotfixes):
         self.refresh_btn.setEnabled(True)
-        self.refresh_btn.setText("🔍 Scan for Vulnerabilities & Updates")
+        self.refresh_btn.setText("🔍 Scan for Vulnerabilities && Updates")
 
         # 1. Populate CISA KEV Table
         self.kev_table.setRowCount(0)

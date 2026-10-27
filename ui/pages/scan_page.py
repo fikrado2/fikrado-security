@@ -67,6 +67,7 @@ class ScanPage(QWidget):
 
         self.desc_lbl = QLabel("Multi-engine detection combining Signatures, YARA, PE Heuristics, and Persistence audit.")
         self.desc_lbl.setStyleSheet("color: #9BA3AF; font-size: 13px;")
+        self.desc_lbl.setWordWrap(True)
         header_layout.addWidget(self.desc_lbl)
         layout.addLayout(header_layout)
 
@@ -129,13 +130,13 @@ class ScanPage(QWidget):
         self.start_btn.clicked.connect(self.start_scan)
         btn_row.addWidget(self.start_btn)
 
-        self.pause_btn = QPushButton("⏸ Pause")
+        self.pause_btn = QPushButton("Pause")
         self.pause_btn.setProperty("secondary", True)
         self.pause_btn.setEnabled(False)
         self.pause_btn.clicked.connect(self.toggle_pause)
         btn_row.addWidget(self.pause_btn)
 
-        self.cancel_btn = QPushButton("⏹ Cancel")
+        self.cancel_btn = QPushButton("Cancel")
         self.cancel_btn.setProperty("danger", True)
         self.cancel_btn.setEnabled(False)
         self.cancel_btn.clicked.connect(self.cancel_scan)
@@ -190,7 +191,7 @@ class ScanPage(QWidget):
 
         self.start_btn.setEnabled(False)
         self.pause_btn.setEnabled(True)
-        self.pause_btn.setText("⏸ Pause")
+        self.pause_btn.setText("Pause")
         self.cancel_btn.setEnabled(True)
 
         self.scanner_thread = MalwareScannerThread(
@@ -209,7 +210,7 @@ class ScanPage(QWidget):
             return
         if self.scanner_thread._is_paused:
             self.scanner_thread.resume()
-            self.pause_btn.setText("⏸ Pause")
+            self.pause_btn.setText("Pause")
         else:
             self.scanner_thread.pause()
             self.pause_btn.setText("▶ Resume")

@@ -73,6 +73,7 @@ class SettingsPage(QWidget):
             "and DPAPI-encrypted AI intelligence provider credentials."
         )
         desc.setStyleSheet("color: #9BA3AF; font-size: 13px;")
+        desc.setWordWrap(True)
         header.addWidget(desc)
         layout.addLayout(header)
 
@@ -94,7 +95,10 @@ class SettingsPage(QWidget):
     def _build_ai_tab(self) -> QWidget:
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
-        scroll.setStyleSheet("background: transparent; border: none;")
+        scroll.setStyleSheet(
+            "QScrollArea { background: transparent; border: none; }"
+            "QScrollArea > QWidget > QWidget { background: transparent; }"
+        )
 
         container = QWidget()
         l = QVBoxLayout(container)

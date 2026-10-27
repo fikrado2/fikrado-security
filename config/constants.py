@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 APP_NAME = "Fikrado Security"
-APP_VERSION = "1.0.0"
+APP_VERSION = "1.1.0"
 APP_AUTHOR = "Fikrado CyberDefense"
 APP_DESCRIPTION = "Next-Generation Windows Security & Threat Defense Platform"
 APP_ID = "com.fikrado.security"

@@ -14,7 +14,7 @@ if str(BASE_DIR) not in sys.path:
     sys.path.insert(0, str(BASE_DIR))
 
 from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QIcon
+from PySide6.QtGui import QFont, QFontDatabase, QGuiApplication, QIcon
 from PySide6.QtWidgets import QApplication
 
 from config.constants import ASSETS_DIR, LOGO_ICO, LOGO_PNG
@@ -23,6 +23,30 @@ from core.updater import init_offline_signatures
 from tools.realtime_guard import realtime_guard
 from ui.app_window import FikradoMainWindow
 from ui.splash_screen import FikradoSplashScreen
+
+
+def configure_application(app: QApplication):
+    """Applies a consistent, high-DPI friendly visual foundation."""
+    app.setStyle("Fusion")
+
+    families = set(QFontDatabase.families())
+    family = next(
+        (name for name in ("Segoe UI Variable Text", "Segoe UI", "Inter", "Arial") if name in families),
+        "Segoe UI",
+    )
+    font = QFont(family)
+    font.setPointSizeF(9.75)
+    font.setStyleStrategy(QFont.StyleStrategy.PreferAntialias)
+    app.setFont(font)
+
+    # Native menu/combo/tooltip animations for a softer, more fluid feel.
+    for effect in (
+        Qt.UIEffect.UI_AnimateMenu,
+        Qt.UIEffect.UI_FadeMenu,
+        Qt.UIEffect.UI_AnimateCombo,
+        Qt.UIEffect.UI_AnimateTooltip,
+    ):
+        QApplication.setEffectEnabled(effect, True)
 
 
 def load_stylesheet(app: QApplication):
@@ -46,7 +70,16 @@ def main():
     except Exception:
         pass
 
+    # Smooth fractional scaling on high-DPI Windows displays (must run pre-QApplication).
+    try:
+        QGuiApplication.setHighDpiScaleFactorRoundingPolicy(
+            Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
+        )
+    except Exception:
+        pass
+
     app = QApplication(sys.argv)
+    configure_application(app)
     app.setApplicationName("Fikrado Security")
     app.setOrganizationName("Fikrado CyberDefense")
 

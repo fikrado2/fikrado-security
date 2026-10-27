@@ -50,12 +50,13 @@ class ReportsPage(QWidget):
             "detailing threat detections, open network sockets, active CISA KEV vulnerabilities, and remediation roadmaps."
         )
         desc.setStyleSheet("color: #9BA3AF; font-size: 13px;")
+        desc.setWordWrap(True)
         header.addWidget(desc)
         layout.addLayout(header)
 
         # Toolbar
         tb = QHBoxLayout()
-        gen_btn = QPushButton("📑 Generate New Full Executive Report Now")
+        gen_btn = QPushButton("📑 Generate Executive Report")
         gen_btn.setProperty("primary", True)
         gen_btn.clicked.connect(self._generate_full_report)
         tb.addWidget(gen_btn)
@@ -89,7 +90,11 @@ class ReportsPage(QWidget):
         # Reports Table
         self.table = QTableWidget(0, 4)
         self.table.setHorizontalHeaderLabels(["Report File Name", "Type", "File Size", "Creation Timestamp"])
-        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
+        report_header = self.table.horizontalHeader()
+        report_header.setSectionResizeMode(0, QHeaderView.Stretch)
+        report_header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
+        report_header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
+        report_header.setSectionResizeMode(3, QHeaderView.ResizeToContents)
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.table.itemSelectionChanged.connect(self._on_row_selected)

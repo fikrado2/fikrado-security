@@ -1,9 +1,18 @@
 """
 Fikrado Security - Circular Security Score Gauge Widget
-Animates a circular progress arc with Nord aurora colors and brand gradient.
+Animates a glowing circular progress arc with Nord aurora colors and brand gradient.
 """
-from PySide6.QtCore import Property, QPointF, QRectF, Qt, QTimeLine
-from PySide6.QtGui import QColor, QConicalGradient, QFont, QLinearGradient, QPainter, QPen
+from PySide6.QtCore import Property, QEasingCurve, QPointF, QRectF, Qt, QTimeLine
+from PySide6.QtGui import (
+    QColor,
+    QFont,
+    QFontMetricsF,
+    QLinearGradient,
+    QPainter,
+    QPainterPath,
+    QPen,
+    QRadialGradient,
+)
 from PySide6.QtWidgets import QWidget
 
 
@@ -13,9 +22,12 @@ class CircularSecurityGauge(QWidget):
     def __init__(self, parent=None, size: int = 190):
         super().__init__(parent)
         self.setFixedSize(size, size)
+        self.setAttribute(Qt.WA_TranslucentBackground)
         self._score = 0
         self._target_score = 88
         self._timeline = QTimeLine(1200, self)
+        self._timeline.setEasingCurve(QEasingCurve(QEasingCurve.OutCubic))
+        self._timeline.setUpdateInterval(16)
         self._timeline.frameChanged.connect(self._on_animation_frame)
 
     def get_score(self) -> int:
@@ -38,47 +50,81 @@ class CircularSecurityGauge(QWidget):
 
     score = Property(int, get_score, set_score)
 
+    def _tier_palette(self):
+        if self._score >= 80:
+            return QColor("#FFD93D"), QColor("#88C0D0"), "PROTECTED", QColor("#A3BE8C")
+        if self._score >= 50:
+            return QColor("#D08770"), QColor("#EBCB8B"), "NEEDS AUDIT", QColor("#EBCB8B")
+        return QColor("#BF616A"), QColor("#D08770"), "AT RISK", QColor("#BF616A")
+
+    def _draw_glow_text(self, painter: QPainter, rect: QRectF, text: str,
+                        font: QFont, color: QColor, glow_color: QColor):
+        """Draws centered text with a layered halo for a true glow effect."""
+        metrics = QFontMetricsF(font)
+        text_width = metrics.horizontalAdvance(text)
+        baseline = rect.center().y() + (metrics.ascent() - metrics.descent()) / 2.0
+
+        path = QPainterPath()
+        path.addText(rect.center().x() - text_width / 2.0, baseline, font, text)
+
+        for stroke_width, alpha in ((10, 14), (7, 26), (4, 48)):
+            pen = QPen(
+                QColor(glow_color.red(), glow_color.green(), glow_color.blue(), alpha),
+                stroke_width,
+            )
+            pen.setJoinStyle(Qt.RoundJoin)
+            painter.setPen(pen)
+            painter.setBrush(Qt.NoBrush)
+            painter.drawPath(path)
+
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(color)
+        painter.drawPath(path)
+
     def paintEvent(self, event):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
+        painter.setRenderHint(QPainter.TextAntialiasing)
 
         width = self.width()
         height = self.height()
-        margin = 14
+        center = QPointF(width / 2.0, height / 2.0)
+        margin = 15
         rect = QRectF(margin, margin, width - 2 * margin, height - 2 * margin)
 
-        # 1. Background Track
-        track_pen = QPen(QColor("#3B4252"), 12)
+        # 1. Soft ambient halo behind the ring
+        halo = QRadialGradient(center, width / 2.0)
+        halo.setColorAt(0.0, QColor(136, 192, 208, 16))
+        halo.setColorAt(0.68, QColor(136, 192, 208, 9))
+        halo.setColorAt(1.0, QColor(136, 192, 208, 0))
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(halo)
+        painter.drawEllipse(QRectF(2, 2, width - 4, height - 4))
+
+        # 2. Background track
+        track_pen = QPen(QColor(59, 66, 82, 220), 11)
         track_pen.setCapStyle(Qt.RoundCap)
         painter.setPen(track_pen)
-        painter.drawArc(rect, -90 * 16, -360 * 16)
+        painter.drawArc(rect, 90 * 16, -360 * 16)
 
-        # 2. Foreground Score Arc
+        # 3. Foreground score arc with layered glow
         if self._score > 0:
+            start_c, end_c, badge_text, badge_color = self._tier_palette()
             span_angle = -int((self._score / 100.0) * 360 * 16)
 
-            # Choose color gradient based on score tier
-            if self._score >= 80:
-                start_c = QColor("#FFD93D")  # Brand Yellow
-                end_c = QColor("#88C0D0")    # Brand Frost Cyan
-                badge_text = "PROTECTED"
-                badge_color = QColor("#A3BE8C")
-            elif self._score >= 50:
-                start_c = QColor("#D08770")  # Aurora Orange
-                end_c = QColor("#EBCB8B")    # Aurora Yellow
-                badge_text = "NEEDS AUDIT"
-                badge_color = QColor("#EBCB8B")
-            else:
-                start_c = QColor("#BF616A")  # Aurora Red
-                end_c = QColor("#D08770")    # Aurora Orange
-                badge_text = "AT RISK"
-                badge_color = QColor("#BF616A")
+            for extra_width, alpha in ((14, 16), (9, 30), (4, 52)):
+                glow_grad = QLinearGradient(rect.topLeft(), rect.bottomRight())
+                glow_grad.setColorAt(0.0, QColor(start_c.red(), start_c.green(), start_c.blue(), alpha))
+                glow_grad.setColorAt(1.0, QColor(end_c.red(), end_c.green(), end_c.blue(), alpha))
+                glow_pen = QPen(glow_grad, 11 + extra_width)
+                glow_pen.setCapStyle(Qt.RoundCap)
+                painter.setPen(glow_pen)
+                painter.drawArc(rect, 90 * 16, span_angle)
 
             gradient = QLinearGradient(rect.topLeft(), rect.bottomRight())
             gradient.setColorAt(0.0, start_c)
             gradient.setColorAt(1.0, end_c)
-
-            arc_pen = QPen(gradient, 12)
+            arc_pen = QPen(gradient, 11)
             arc_pen.setCapStyle(Qt.RoundCap)
             painter.setPen(arc_pen)
             painter.drawArc(rect, 90 * 16, span_angle)
@@ -86,20 +132,38 @@ class CircularSecurityGauge(QWidget):
             badge_text = "UNKNOWN"
             badge_color = QColor("#9BA3AF")
 
-        # 3. Center Score Text
-        painter.setPen(QColor("#ECEFF4"))
-        font_score = QFont("Segoe UI", 32, QFont.Bold)
-        painter.setFont(font_score)
-        painter.drawText(QRectF(0, height * 0.24, width, 45), Qt.AlignCenter, str(self._score))
+        # 4. Center score with a soft cyan halo
+        score_font = QFont("Segoe UI Variable Display")
+        score_font.setFamilies(["Segoe UI Variable Display", "Segoe UI", "Arial"])
+        score_font.setPointSize(34)
+        score_font.setBold(True)
+        self._draw_glow_text(
+            painter,
+            QRectF(0, height * 0.235, width, 54),
+            str(self._score),
+            score_font,
+            QColor("#ECEFF4"),
+            QColor("#88C0D0"),
+        )
 
-        # 4. "/100" Subtitle
+        # 5. Caption
+        caption_font = QFont("Segoe UI")
+        caption_font.setFamilies(["Segoe UI Variable Text", "Segoe UI", "Arial"])
+        caption_font.setPointSize(8)
+        caption_font.setBold(True)
         painter.setPen(QColor("#9BA3AF"))
-        font_sub = QFont("Segoe UI", 11)
-        painter.setFont(font_sub)
-        painter.drawText(QRectF(0, height * 0.52, width, 20), Qt.AlignCenter, "SECURITY SCORE")
+        painter.setFont(caption_font)
+        painter.drawText(QRectF(0, height * 0.52, width, 18), Qt.AlignCenter, "SECURITY SCORE")
 
-        # 5. Status Badge Pill
+        # 6. Status badge pill
+        badge_rect = QRectF(width / 2.0 - 46, height * 0.665, 92, 21)
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(QColor(badge_color.red(), badge_color.green(), badge_color.blue(), 26))
+        painter.drawRoundedRect(badge_rect, 10, 10)
         painter.setPen(badge_color)
-        font_badge = QFont("Segoe UI", 10, QFont.Bold)
-        painter.setFont(font_badge)
-        painter.drawText(QRectF(0, height * 0.68, width, 20), Qt.AlignCenter, badge_text)
+        badge_font = QFont("Segoe UI")
+        badge_font.setFamilies(["Segoe UI Variable Text", "Segoe UI", "Arial"])
+        badge_font.setPointSize(7)
+        badge_font.setBold(True)
+        painter.setFont(badge_font)
+        painter.drawText(badge_rect, Qt.AlignCenter, badge_text)

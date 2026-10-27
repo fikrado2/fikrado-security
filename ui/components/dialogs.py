@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
     QRadioButton,
     QVBoxLayout
 )
+from ui.effects import apply_text_glow
 
 
 class AIConsentDialog(QDialog):
@@ -36,7 +37,8 @@ class AIConsentDialog(QDialog):
 
         # Header
         title = QLabel("Cloud Intelligence Privacy Consent")
-        title.setStyleSheet("font-size: 18px; font-weight: bold; color: #88C0D0;")
+        title.setStyleSheet("font-size: 18px; font-weight: bold; color: #88C0D0; background: transparent;")
+        apply_text_glow(title, "#88C0D0", blur=17, opacity=145)
         layout.addWidget(title)
 
         desc = QLabel(
@@ -52,7 +54,10 @@ class AIConsentDialog(QDialog):
         preview_box = QPlainTextEdit()
         preview_box.setPlainText(payload_preview)
         preview_box.setReadOnly(True)
-        preview_box.setStyleSheet("background-color: #242933; border: 1px solid #4C566A; font-family: Consolas; font-size: 11px;")
+        preview_box.setStyleSheet(
+            "background-color: #242933; border: 1px solid #4C566A; border-radius: 8px; "
+            "font-family: Consolas; font-size: 11px; padding: 8px;"
+        )
         layout.addWidget(preview_box)
 
         # Privacy mode options
@@ -78,7 +83,7 @@ class AIConsentDialog(QDialog):
         cancel_btn.clicked.connect(self.reject)
         btn_layout.addWidget(cancel_btn)
 
-        self.accept_btn = QPushButton("Authorize & Transmit")
+        self.accept_btn = QPushButton("Authorize && Transmit")
         self.accept_btn.setProperty("primary", True)
         self.accept_btn.clicked.connect(self.accept)
         btn_layout.addWidget(self.accept_btn)
@@ -106,7 +111,8 @@ class NetworkConsentDialog(QDialog):
         layout.setSpacing(14)
 
         title = QLabel("⚠️ Authorization & Compliance Notice")
-        title.setStyleSheet("font-size: 16px; font-weight: bold; color: #EBCB8B;")
+        title.setStyleSheet("font-size: 16px; font-weight: bold; color: #EBCB8B; background: transparent;")
+        apply_text_glow(title, "#EBCB8B", blur=15, opacity=140)
         layout.addWidget(title)
 
         desc = QLabel(

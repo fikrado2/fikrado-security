@@ -50,6 +50,7 @@ class QuarantinePage(QWidget):
             "read, or unpacked by background malware processes. Files can be safely restored if whitelisted."
         )
         desc.setStyleSheet("color: #9BA3AF; font-size: 13px;")
+        desc.setWordWrap(True)
         header.addWidget(desc)
         layout.addLayout(header)
 

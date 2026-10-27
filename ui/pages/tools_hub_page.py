@@ -3,7 +3,7 @@ Fikrado Security - All-In-One Security Tools Hub
 Integrates 10 essential security modules into a single unified management station.
 """
 from pathlib import Path
-from PySide6.QtCore import Qt, QThread, Signal
+from PySide6.QtCore import QSize, Qt, QThread, Signal
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -13,9 +13,11 @@ from PySide6.QtWidgets import (
     QHeaderView,
     QLabel,
     QLineEdit,
+    QListWidget,
+    QListWidgetItem,
     QProgressBar,
     QPushButton,
-    QTabWidget,
+    QStackedWidget,
     QTableWidget,
     QTableWidgetItem,
     QTextEdit,
@@ -75,32 +77,47 @@ class ToolsHubPage(QWidget):
             "process surveillance, DoD file destruction, and credential integrity testing."
         )
         desc.setStyleSheet("color: #9BA3AF; font-size: 13px;")
+        desc.setWordWrap(True)
         header.addWidget(desc)
         layout.addLayout(header)
 
-        # Tabs for Tools
-        self.tabs = QTabWidget()
+        # Vertical tool navigator + stacked panels (scales cleanly to 10+ tools)
+        tools_split = QHBoxLayout()
+        tools_split.setSpacing(14)
 
-        # 1. Real-Time & Defender Controls
-        self.tabs.addTab(self._build_realtime_tab(), "⚡ Real-Time & Defender")
-        # 2. Windows Firewall
-        self.tabs.addTab(self._build_firewall_tab(), "🔥 Firewall Manager")
-        # 3. Startup Manager
-        self.tabs.addTab(self._build_startup_tab(), "🚀 Startup Manager")
-        # 4. Process Manager
-        self.tabs.addTab(self._build_process_tab(), "⚙️ Process Manager")
-        # 5. Browser & Hosts
-        self.tabs.addTab(self._build_browser_hosts_tab(), "🌐 Browser & Hosts")
-        # 6. File Shredder
-        self.tabs.addTab(self._build_shredder_tab(), "🗑️ Secure Shredder")
-        # 7. Password Breach Check
-        self.tabs.addTab(self._build_password_tab(), "🔑 Password & Breach")
-        # 8. Hardening Checklist
-        self.tabs.addTab(self._build_hardening_tab(), "🛡️ Hardening Audit")
-        # 9. Network & DNS Diagnostic
-        self.tabs.addTab(self._build_dns_tab(), "📡 Network & DNS")
+        self.tool_list = QListWidget()
+        self.tool_list.setObjectName("ToolsNav")
+        self.tool_list.setFixedWidth(212)
+        self.tool_list.setFocusPolicy(Qt.NoFocus)
+        self.tool_list.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.tool_list.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
 
-        layout.addWidget(self.tabs)
+        self.tool_stack = QStackedWidget()
+
+        tools = [
+            ("⚡  Real-Time & Defender", self._build_realtime_tab()),
+            ("🔥  Firewall Manager", self._build_firewall_tab()),
+            ("🚀  Startup Manager", self._build_startup_tab()),
+            ("⚙️  Process Manager", self._build_process_tab()),
+            ("🌐  Browser & Hosts", self._build_browser_hosts_tab()),
+            ("🗑️  Secure Shredder", self._build_shredder_tab()),
+            ("🔑  Password & Breach", self._build_password_tab()),
+            ("🛡️  Hardening Audit", self._build_hardening_tab()),
+            ("📡  Network & DNS", self._build_dns_tab()),
+        ]
+
+        for label, panel in tools:
+            item = QListWidgetItem(label)
+            item.setSizeHint(QSize(0, 40))
+            self.tool_list.addItem(item)
+            self.tool_stack.addWidget(panel)
+
+        self.tool_list.currentRowChanged.connect(self.tool_stack.setCurrentIndex)
+        self.tool_list.setCurrentRow(0)
+
+        tools_split.addWidget(self.tool_list)
+        tools_split.addWidget(self.tool_stack, 1)
+        layout.addLayout(tools_split)
 
     # ==================== 1. REALTIME & DEFENDER ====================
     def _build_realtime_tab(self) -> QWidget:
@@ -722,7 +739,7 @@ class ToolsHubPage(QWidget):
         self.dns_summary_lbl.setStyleSheet("color: #D8DEE9; font-size: 12px;")
         cl.addWidget(self.dns_summary_lbl)
 
-        btn_run = QPushButton("📡 Run Network & DNS Diagnostic")
+        btn_run = QPushButton("📡 Run Network && DNS Diagnostic")
         btn_run.setProperty("primary", True)
         btn_run.clicked.connect(self._run_dns_diagnostic)
         cl.addWidget(btn_run)

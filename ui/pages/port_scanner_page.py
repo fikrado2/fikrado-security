@@ -67,6 +67,7 @@ class PortScannerPage(QWidget):
             "vulnerable to external exploit chains."
         )
         desc.setStyleSheet("color: #9BA3AF; font-size: 13px;")
+        desc.setWordWrap(True)
         header.addWidget(desc)
         layout.addLayout(header)
 
@@ -99,7 +100,17 @@ class PortScannerPage(QWidget):
         # Table
         self.table = QTableWidget(0, 6)
         self.table.setHorizontalHeaderLabels(["Risk", "Port", "Proto", "Service", "Process (PID)", "Status"])
-        self.table.horizontalHeader().setSectionResizeMode(4, QHeaderView.Stretch)
+        port_header = self.table.horizontalHeader()
+        port_header.setSectionResizeMode(0, QHeaderView.Fixed)
+        port_header.setSectionResizeMode(1, QHeaderView.Fixed)
+        port_header.setSectionResizeMode(2, QHeaderView.Fixed)
+        port_header.setSectionResizeMode(3, QHeaderView.Stretch)
+        port_header.setSectionResizeMode(4, QHeaderView.Stretch)
+        port_header.setSectionResizeMode(5, QHeaderView.Fixed)
+        self.table.setColumnWidth(0, 78)
+        self.table.setColumnWidth(1, 64)
+        self.table.setColumnWidth(2, 62)
+        self.table.setColumnWidth(5, 80)
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.table.itemSelectionChanged.connect(self._on_row_selected)

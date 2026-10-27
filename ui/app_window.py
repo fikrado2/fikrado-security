@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
     QWidget
 )
 from config.constants import (
+    APP_VERSION,
     ASSETS_DIR,
     COLOR_BG_DARK,
     COLOR_BG_DARKEST,
@@ -27,6 +28,12 @@ from config.constants import (
 )
 from ui.components.title_bar import CustomTitleBar
 from ui.components.toast import ToastNotification
+from ui.effects import (
+    apply_text_glow,
+    decorate_text_glow,
+    fade_in,
+    pulse_glow,
+)
 from ui.pages.ai_scan_page import AIScanPage
 from ui.pages.dashboard_page import DashboardPage
 from ui.pages.port_scanner_page import PortScannerPage
@@ -58,6 +65,7 @@ class FikradoMainWindow(QMainWindow):
     def _init_ui(self):
         # Central Main Widget
         self.central_widget = QWidget()
+        self.central_widget.setObjectName("AppRoot")
         self.setCentralWidget(self.central_widget)
 
         root_layout = QVBoxLayout(self.central_widget)
@@ -79,7 +87,7 @@ class FikradoMainWindow(QMainWindow):
 
         # Stacked Pages
         self.stacked_pages = QStackedWidget()
-        self.stacked_pages.setStyleSheet(f"background-color: {COLOR_BG_DARK};")
+        self.stacked_pages.setObjectName("PageStack")
 
         # Instantiate Pages (11 Pages)
         self.page_dashboard = DashboardPage(self)
@@ -115,6 +123,9 @@ class FikradoMainWindow(QMainWindow):
         body_layout.addWidget(self.stacked_pages, 1)
         root_layout.addLayout(body_layout)
 
+        # Ambient glow across page headlines, KPI values and section titles.
+        decorate_text_glow(self.central_widget)
+
     def _create_sidebar(self) -> QWidget:
         sidebar = QFrame()
         sidebar.setObjectName("SidebarWidget")
@@ -125,26 +136,49 @@ class FikradoMainWindow(QMainWindow):
 
         # Sidebar Header Branding
         brand_row = QHBoxLayout()
-        brand_row.setSpacing(10)
-        brand_row.setContentsMargins(6, 4, 6, 14)
+        brand_row.setSpacing(11)
+        brand_row.setContentsMargins(6, 4, 6, 12)
 
         if LOGO_PNG.exists():
-            logo_pix = QPixmap(str(LOGO_PNG)).scaled(32, 32, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            logo_pix = QPixmap(str(LOGO_PNG)).scaled(36, 36, Qt.KeepAspectRatio, Qt.SmoothTransformation)
             logo_lbl = QLabel()
             logo_lbl.setPixmap(logo_pix)
+            logo_lbl.setFixedSize(36, 36)
+            logo_lbl.setStyleSheet("background: transparent;")
+            logo_glow = apply_text_glow(logo_lbl, "#FFD93D", blur=20, opacity=135)
+            pulse_glow(logo_glow, min_blur=12, max_blur=24, duration=2800)
             brand_row.addWidget(logo_lbl)
 
         brand_text_layout = QVBoxLayout()
-        brand_text_layout.setSpacing(0)
+        brand_text_layout.setSpacing(1)
         app_title = QLabel("FIKRADO")
-        app_title.setStyleSheet("font-size: 15px; font-weight: 800; color: #ECEFF4; letter-spacing: 1.5px;")
+        app_title.setStyleSheet(
+            "font-size: 15px; font-weight: 800; color: #ECEFF4; "
+            "letter-spacing: 1.5px; background: transparent;"
+        )
+        apply_text_glow(app_title, "#D9F1F7", blur=14, opacity=120)
         sub_title = QLabel("SECURITY")
-        sub_title.setStyleSheet("font-size: 11px; font-weight: 700; color: #FFD93D; letter-spacing: 2px;")
+        sub_title.setStyleSheet(
+            "font-size: 11px; font-weight: 800; color: #FFD93D; "
+            "letter-spacing: 2px; background: transparent;"
+        )
+        apply_text_glow(sub_title, "#FFD93D", blur=12, opacity=150)
         brand_text_layout.addWidget(app_title)
         brand_text_layout.addWidget(sub_title)
         brand_row.addLayout(brand_text_layout)
         brand_row.addStretch()
         layout.addLayout(brand_row)
+
+        # Thin brand divider under the wordmark
+        divider = QFrame()
+        divider.setFixedHeight(1)
+        divider.setStyleSheet(
+            "background: qlineargradient(x1:0, y1:0, x2:1, y2:0, "
+            "stop:0 rgba(255, 217, 61, 140), stop:1 rgba(136, 192, 208, 26));"
+            "border: none;"
+        )
+        layout.addWidget(divider)
+        layout.addSpacing(6)
 
         # Nav Buttons (11 Pages)
         self.nav_btn_group = QButtonGroup(self)
@@ -166,16 +200,19 @@ class FikradoMainWindow(QMainWindow):
 
         self.nav_buttons = {}
         for title, icon_file, fallback_symbol, page_idx in pages:
-            btn = QPushButton(f"  {fallback_symbol}  {title}")
+            button_label = title.replace("&", "&&")
+            btn = QPushButton(f"  {fallback_symbol}  {button_label}")
             btn.setProperty("sidebar", True)
             btn.setCheckable(True)
+            btn.setCursor(Qt.PointingHandCursor)
+            btn.setMinimumHeight(40)
 
             # Try loading SVG icon
             svg_path = ICONS_DIR / icon_file
             if svg_path.exists():
                 btn.setIcon(QIcon(str(svg_path)))
                 btn.setIconSize(QSize(18, 18))
-                btn.setText(f"  {title}")
+                btn.setText(f"  {button_label}")
 
             btn.clicked.connect(lambda _, idx=page_idx: self.navigate_to_page(idx))
             self.nav_btn_group.addButton(btn, page_idx)
@@ -191,7 +228,9 @@ class FikradoMainWindow(QMainWindow):
         sf_layout.setContentsMargins(10, 8, 10, 8)
 
         status_dot = QLabel("●")
-        status_dot.setStyleSheet("color: #A3BE8C; font-size: 14px;")
+        status_dot.setStyleSheet("color: #A3BE8C; font-size: 14px; background: transparent;")
+        dot_glow = apply_text_glow(status_dot, "#A3BE8C", blur=14, opacity=210)
+        pulse_glow(dot_glow, min_blur=8, max_blur=18, duration=1800)
         sf_layout.addWidget(status_dot)
 
         status_text = QLabel("Shield Active")
@@ -199,8 +238,8 @@ class FikradoMainWindow(QMainWindow):
         sf_layout.addWidget(status_text)
         sf_layout.addStretch()
 
-        ver_lbl = QLabel("v1.0.0")
-        ver_lbl.setStyleSheet("color: #9BA3AF; font-size: 10px;")
+        ver_lbl = QLabel(f"v{APP_VERSION}")
+        ver_lbl.setStyleSheet("color: #9BA3AF; font-size: 10px; background: transparent;")
         sf_layout.addWidget(ver_lbl)
         layout.addWidget(shield_frame)
 
@@ -214,6 +253,9 @@ class FikradoMainWindow(QMainWindow):
         self.stacked_pages.setCurrentIndex(index)
         if index in self.nav_buttons:
             self.nav_buttons[index].setChecked(True)
+
+        # Smooth cross-page fade
+        fade_in(self.stacked_pages.currentWidget(), 240)
 
         # Refresh page state if needed
         if index == 0:

@@ -23,6 +23,7 @@ from core.system_info import audit_system_hardening
 from tools.realtime_guard import realtime_guard
 from ui.components.cards import StatCard, ThreatBadge
 from ui.components.circular_gauge import CircularSecurityGauge
+from ui.effects import apply_text_glow, update_glow
 
 
 class DashboardPage(QWidget):
@@ -42,11 +43,13 @@ class DashboardPage(QWidget):
         header_layout = QVBoxLayout()
         header_layout.setSpacing(4)
         title = QLabel("Security Dashboard")
-        title.setStyleSheet("font-size: 24px; font-weight: 800; color: #ECEFF4;")
+        title.setStyleSheet("font-size: 24px; font-weight: 800; color: #ECEFF4; background: transparent;")
+        apply_text_glow(title, "#CFEAF1", blur=18, opacity=115)
         header_layout.addWidget(title)
 
         subtitle = QLabel("Real-time threat telemetry, security posture scoring, and endpoint status.")
         subtitle.setStyleSheet("color: #9BA3AF; font-size: 13px;")
+        subtitle.setWordWrap(True)
         header_layout.addWidget(subtitle)
         main_layout.addLayout(header_layout)
 
@@ -79,7 +82,10 @@ class DashboardPage(QWidget):
         status_layout.setSpacing(12)
 
         self.status_title = QLabel("🛡️ All Systems Protected")
-        self.status_title.setStyleSheet("font-size: 18px; font-weight: bold; color: #88C0D0;")
+        self.status_title.setStyleSheet(
+            "font-size: 18px; font-weight: bold; color: #88C0D0; background: transparent;"
+        )
+        apply_text_glow(self.status_title, "#88C0D0", blur=15, opacity=130)
         status_layout.addWidget(self.status_title)
 
         self.status_desc = QLabel(
@@ -125,9 +131,9 @@ class DashboardPage(QWidget):
         stats_row.setSpacing(15)
 
         self.card_files = StatCard("Files Scanned", "0", "Total objects analyzed", "#88C0D0", "📂")
-        self.card_threats = StatCard("Threats Neutralized", "0", "Malware & PUPs blocked", "#BF616A", "🛡️")
+        self.card_threats = StatCard("Threats Blocked", "0", "Malware & PUPs blocked", "#BF616A", "🛡️")
         self.card_realtime = StatCard("Real-Time Guard", "ACTIVE", "Monitoring Downloads & Temp", "#A3BE8C", "⚡")
-        self.card_vulns = StatCard("Known CVEs Tracked", "0", "CISA KEV active exploits", "#EBCB8B", "⚠️")
+        self.card_vulns = StatCard("Known CVEs", "0", "CISA KEV active exploits", "#EBCB8B", "⚠️")
 
         stats_row.addWidget(self.card_files)
         stats_row.addWidget(self.card_threats)
@@ -156,7 +162,15 @@ class DashboardPage(QWidget):
 
         self.threat_table = QTableWidget(0, 5)
         self.threat_table.setHorizontalHeaderLabels(["Severity", "Threat Name", "Type", "Engine", "Target File / Path"])
-        self.threat_table.horizontalHeader().setSectionResizeMode(4, QHeaderView.Stretch)
+        threat_header = self.threat_table.horizontalHeader()
+        threat_header.setSectionResizeMode(0, QHeaderView.Fixed)
+        threat_header.setSectionResizeMode(1, QHeaderView.Stretch)
+        threat_header.setSectionResizeMode(2, QHeaderView.Fixed)
+        threat_header.setSectionResizeMode(3, QHeaderView.Fixed)
+        threat_header.setSectionResizeMode(4, QHeaderView.Stretch)
+        self.threat_table.setColumnWidth(0, 92)
+        self.threat_table.setColumnWidth(2, 112)
+        self.threat_table.setColumnWidth(3, 152)
         self.threat_table.setSelectionBehavior(QTableWidget.SelectRows)
         self.threat_table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.threat_table.setFixedHeight(180)
@@ -166,6 +180,14 @@ class DashboardPage(QWidget):
 
         # Load dynamic state
         self.refresh_dashboard()
+
+    def _set_status(self, text: str, color: str):
+        """Updates the posture headline and keeps its glow color in sync."""
+        self.status_title.setText(text)
+        self.status_title.setStyleSheet(
+            f"font-size: 18px; font-weight: bold; color: {color}; background: transparent;"
+        )
+        update_glow(self.status_title, color, 130)
 
     def refresh_dashboard(self):
         """Refreshes statistics, score, and threat history."""
@@ -183,14 +205,11 @@ class DashboardPage(QWidget):
         self.gauge.set_score(score, animated=True)
 
         if score >= 80:
-            self.status_title.setText("🛡️ All Systems Protected")
-            self.status_title.setStyleSheet("font-size: 18px; font-weight: bold; color: #88C0D0;")
+            self._set_status("🛡️ All Systems Protected", "#88C0D0")
         elif score >= 50:
-            self.status_title.setText("⚠️ Security Posture Attention Required")
-            self.status_title.setStyleSheet("font-size: 18px; font-weight: bold; color: #EBCB8B;")
+            self._set_status("⚠️ Security Posture Attention Required", "#EBCB8B")
         else:
-            self.status_title.setText("🚨 Critical Vulnerabilities Detected")
-            self.status_title.setStyleSheet("font-size: 18px; font-weight: bold; color: #BF616A;")
+            self._set_status("🚨 Critical Vulnerabilities Detected", "#BF616A")
 
         # Populate recent threats table
         recent = db.get_recent_threats(limit=10)

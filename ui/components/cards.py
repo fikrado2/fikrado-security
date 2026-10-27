@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget
 )
+from ui.effects import apply_text_glow
 
 
 class StatCard(QFrame):
@@ -22,13 +23,14 @@ class StatCard(QFrame):
         self.setProperty("card", True)
         self.setStyleSheet(f"""
             QFrame[card="true"] {{
-                background-color: #3B4252;
-                border: 1px solid #434C5E;
-                border-radius: 10px;
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                            stop:0 #3C4352, stop:1 #373E4C);
+                border: 1px solid rgba(76, 86, 106, 166);
+                border-radius: 12px;
                 padding: 12px;
             }}
             QFrame[card="true"]:hover {{
-                border-color: {accent_color};
+                border: 1px solid {accent_color};
             }}
         """)
 
@@ -40,27 +42,38 @@ class StatCard(QFrame):
 
         # Title
         title_lbl = QLabel(title.upper())
-        title_lbl.setStyleSheet("color: #9BA3AF; font-size: 11px; font-weight: bold; letter-spacing: 0.8px;")
+        title_lbl.setStyleSheet(
+            "color: #9BA3AF; font-size: 10px; font-weight: 700; "
+            "letter-spacing: 0.6px; background: transparent;"
+        )
         v_layout.addWidget(title_lbl)
 
         # Value
         self.value_lbl = QLabel(value)
-        self.value_lbl.setStyleSheet(f"color: {accent_color}; font-size: 26px; font-weight: 800;")
+        self.value_lbl.setStyleSheet(
+            f"color: {accent_color}; font-size: 26px; font-weight: 800; background: transparent;"
+        )
+        apply_text_glow(self.value_lbl, accent_color, blur=16, opacity=145)
         v_layout.addWidget(self.value_lbl)
 
         # Subtext
         if subtext:
             sub_lbl = QLabel(subtext)
-            sub_lbl.setStyleSheet("color: #D8DEE9; font-size: 12px;")
+            sub_lbl.setStyleSheet(
+                "color: #D8DEE9; font-size: 11px; background: transparent;"
+            )
+            sub_lbl.setWordWrap(True)
             v_layout.addWidget(sub_lbl)
 
-        layout.addLayout(v_layout)
+        v_layout.addStretch()
+        layout.addLayout(v_layout, 1)
 
         if icon_symbol:
             icon_lbl = QLabel(icon_symbol)
-            icon_lbl.setStyleSheet(f"color: {accent_color}; font-size: 32px;")
+            icon_lbl.setStyleSheet(f"color: {accent_color}; font-size: 28px; background: transparent;")
             icon_lbl.setAlignment(Qt.AlignCenter)
-            layout.addWidget(icon_lbl)
+            apply_text_glow(icon_lbl, accent_color, blur=14, opacity=85)
+            layout.addWidget(icon_lbl, 0, Qt.AlignVCenter)
 
     def set_value(self, val: str):
         self.value_lbl.setText(str(val))

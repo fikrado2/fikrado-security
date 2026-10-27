@@ -84,6 +84,7 @@ class AIScanPage(QWidget):
             "to reverse-engineer suspicious scripts, explain complex malware TTPs, and generate remediation roadmaps."
         )
         desc.setStyleSheet("color: #9BA3AF; font-size: 13px;")
+        desc.setWordWrap(True)
         header.addWidget(desc)
         layout.addLayout(header)
 
@@ -103,9 +104,15 @@ class AIScanPage(QWidget):
         self.provider_combo.currentIndexChanged.connect(self._on_provider_changed)
         tb_layout.addWidget(self.provider_combo, 1)
 
-        self.privacy_lbl = QLabel("🛡️ Privacy: Safe Metadata Only")
-        self.privacy_lbl.setStyleSheet("color: #A3BE8C; font-weight: bold; font-size: 11px; background: rgba(163,190,140,0.15); padding: 4px 10px; border-radius: 4px;")
-        tb_layout.addWidget(self.privacy_lbl)
+        self.privacy_lbl = QLabel("🛡️ Metadata Only")
+        self.privacy_lbl.setToolTip(
+            "Privacy mode: only safe file metadata (names, hashes, sizes) is sent to the "
+            "selected AI provider. Raw file contents stay on this device."
+        )
+        self.privacy_lbl.setStyleSheet("color: #A3BE8C; font-weight: bold; font-size: 11px; background: rgba(163, 190, 140, 38); padding: 0 10px; border-radius: 11px;")
+        self.privacy_lbl.setFixedHeight(24)
+        self.privacy_lbl.setAlignment(Qt.AlignCenter)
+        tb_layout.addWidget(self.privacy_lbl, 0, Qt.AlignVCenter)
 
         layout.addWidget(top_bar)
 
@@ -173,7 +180,7 @@ class AIScanPage(QWidget):
         ca_layout.addWidget(ca_desc)
 
         audit_btns = QHBoxLayout()
-        btn_audit_ports = QPushButton("Audit Ports & Startup")
+        btn_audit_ports = QPushButton("Audit Ports && Startup")
         btn_audit_ports.setProperty("secondary", True)
         btn_audit_ports.clicked.connect(self._trigger_ports_analysis)
         audit_btns.addWidget(btn_audit_ports)
@@ -247,11 +254,17 @@ class AIScanPage(QWidget):
             plugin_manager.settings.set("ai", "active_provider", provider_id)
             plugin = plugin_manager.get_plugin(provider_id)
             if plugin and plugin.is_local:
-                self.privacy_lbl.setText("🛡️ 100% Private (Local On-Device)")
-                self.privacy_lbl.setStyleSheet("color: #A3BE8C; font-weight: bold; font-size: 11px; background: rgba(163,190,140,0.15); padding: 4px 10px; border-radius: 4px;")
+                self.privacy_lbl.setText("🛡️ Local On-Device")
+                self.privacy_lbl.setToolTip(
+                    "Local provider: all analysis runs on this machine. No data leaves your device."
+                )
+                self.privacy_lbl.setStyleSheet("color: #A3BE8C; font-weight: bold; font-size: 11px; background: rgba(163, 190, 140, 38); padding: 0 10px; border-radius: 11px;")
             else:
-                self.privacy_lbl.setText("☁️ Cloud AI (Privacy Consent Active)")
-                self.privacy_lbl.setStyleSheet("color: #88C0D0; font-weight: bold; font-size: 11px; background: rgba(136,192,208,0.15); padding: 4px 10px; border-radius: 4px;")
+                self.privacy_lbl.setText("☁️ Cloud Consent Active")
+                self.privacy_lbl.setToolTip(
+                    "Cloud provider: only the metadata or snippet you explicitly approve is transmitted."
+                )
+                self.privacy_lbl.setStyleSheet("color: #88C0D0; font-weight: bold; font-size: 11px; background: rgba(136, 192, 208, 38); padding: 0 10px; border-radius: 11px;")
 
     def _browse_file(self):
         f, _ = QFileDialog.getOpenFileName(self, "Select Suspicious File for AI Analysis")

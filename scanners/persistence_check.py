@@ -4,12 +4,12 @@ Scans Registry Run/RunOnce, Startup folders, Scheduled Tasks, WMI subscriptions,
 and running processes for stealth persistence and suspicious execution chains.
 """
 import os
-import subprocess
 import winreg
 from pathlib import Path
 from typing import Dict, List
 import psutil
 from core.logger import logger
+from core.subprocess_utils import run_hidden
 
 
 class PersistenceInspector:
@@ -102,7 +102,7 @@ class PersistenceInspector:
         findings = []
         try:
             cmd = ["schtasks", "/query", "/fo", "csv", "/v"]
-            res = subprocess.run(cmd, capture_output=True, text=True, timeout=8)
+            res = run_hidden(cmd, capture_output=True, text=True, timeout=8)
             if res.returncode == 0:
                 lines = res.stdout.splitlines()
                 if len(lines) > 1:
@@ -167,7 +167,7 @@ class PersistenceInspector:
         findings = []
         try:
             cmd = ["powershell", "-NoProfile", "-Command", "Get-CimInstance -Namespace root\\subscription -ClassName __EventConsumer | Select-Object Name, CommandLineTemplate | ConvertTo-Json"]
-            res = subprocess.run(cmd, capture_output=True, text=True, timeout=6)
+            res = run_hidden(cmd, capture_output=True, text=True, timeout=6)
             if res.returncode == 0 and res.stdout.strip():
                 import json
                 try:

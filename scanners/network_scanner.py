@@ -5,12 +5,12 @@ and provides one-click remediation (Kill Process, Add Firewall Block Rule).
 """
 import ipaddress
 import socket
-import subprocess
 from concurrent.futures import ThreadPoolExecutor
 from typing import Dict, List, Optional, Tuple
 import psutil
 from config.security_rules import RISKY_PORTS
 from core.logger import logger
+from core.subprocess_utils import run_hidden
 
 
 def get_process_details(pid: Optional[int]) -> Tuple[str, str]:
@@ -99,7 +99,7 @@ def _fallback_netstat() -> List[dict]:
     """Fallback command parser using netstat -ano."""
     results = []
     try:
-        res = subprocess.run(["netstat", "-ano"], capture_output=True, text=True, timeout=8)
+        res = run_hidden(["netstat", "-ano"], capture_output=True, text=True, timeout=8)
         if res.returncode == 0:
             lines = res.stdout.splitlines()
             for line in lines:
@@ -211,7 +211,7 @@ def add_firewall_block_rule(rule_name: str, port: int, protocol: str = "TCP") ->
             f"protocol={protocol}",
             f"localport={port}"
         ]
-        res = subprocess.run(cmd, capture_output=True, text=True, timeout=6)
+        res = run_hidden(cmd, capture_output=True, text=True, timeout=6)
         if res.returncode == 0 and "Ok." in res.stdout:
             logger.info(f"Added Windows Firewall block rule: {rule_name} on port {port}/{protocol}")
             return True, f"Firewall rule '{rule_name}' successfully added (Blocked {protocol} {port})."

@@ -2,8 +2,8 @@
 Fikrado Security - Windows Firewall Manager
 View and toggle firewall profiles (Domain, Private, Public), view active rules, and add rules.
 """
-import subprocess
 from typing import Dict, List, Tuple
+from core.subprocess_utils import run_hidden
 from core.logger import logger
 
 
@@ -13,7 +13,7 @@ class FirewallManager:
         """Returns enabled state for Domain, Private, and Public profiles."""
         status = {"Domain": True, "Private": True, "Public": True}
         try:
-            res = subprocess.run(["netsh", "advfirewall", "show", "allprofiles", "state"], capture_output=True, text=True, timeout=5)
+            res = run_hidden(["netsh", "advfirewall", "show", "allprofiles", "state"], capture_output=True, text=True, timeout=5)
             if res.returncode == 0:
                 current_profile = None
                 for line in res.stdout.splitlines():
@@ -36,7 +36,7 @@ class FirewallManager:
         state_arg = "on" if enable else "off"
         try:
             cmd = ["netsh", "advfirewall", "set", prof_arg, "state", state_arg]
-            res = subprocess.run(cmd, capture_output=True, text=True, timeout=6)
+            res = run_hidden(cmd, capture_output=True, text=True, timeout=6)
             if res.returncode == 0:
                 return True, f"Firewall profile '{profile}' set to {state_arg.upper()}."
             return False, f"netsh error: {res.stderr or res.stdout}"
@@ -48,7 +48,7 @@ class FirewallManager:
         rules = []
         try:
             cmd = ["netsh", "advfirewall", "firewall", "show", "rule", "name=all"]
-            res = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+            res = run_hidden(cmd, capture_output=True, text=True, timeout=10)
             if res.returncode == 0:
                 current_rule = {}
                 for line in res.stdout.splitlines():
@@ -78,7 +78,7 @@ class FirewallManager:
                 f"protocol={protocol}",
                 f"localport={port}"
             ]
-            res = subprocess.run(cmd, capture_output=True, text=True, timeout=6)
+            res = run_hidden(cmd, capture_output=True, text=True, timeout=6)
             if res.returncode == 0 and "Ok." in res.stdout:
                 return True, f"Blocked {protocol} port {port} under rule '{name}'."
             return False, f"Failed: {res.stderr or res.stdout}"

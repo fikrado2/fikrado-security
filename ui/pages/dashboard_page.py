@@ -24,6 +24,8 @@ from tools.realtime_guard import realtime_guard
 from ui.components.cards import StatCard, ThreatBadge
 from ui.components.circular_gauge import CircularSecurityGauge
 from ui.effects import apply_text_glow, update_glow
+from ui.formatting import display_path
+from ui.icons import icon_label, refresh_icon_label, set_icon
 
 
 class DashboardPage(QWidget):
@@ -69,6 +71,7 @@ class DashboardPage(QWidget):
 
         audit_btn = QPushButton("Re-audit Posture")
         audit_btn.setProperty("secondary", True)
+        set_icon(audit_btn, "refresh", 16)
         audit_btn.clicked.connect(self.refresh_dashboard)
         score_layout.addWidget(audit_btn)
 
@@ -81,12 +84,18 @@ class DashboardPage(QWidget):
         status_layout.setContentsMargins(24, 20, 24, 20)
         status_layout.setSpacing(12)
 
-        self.status_title = QLabel("🛡️ All Systems Protected")
+        status_header = QHBoxLayout()
+        status_header.setSpacing(10)
+        self.status_icon = icon_label("shield", 24)
+        status_header.addWidget(self.status_icon)
+        self.status_title = QLabel("All Systems Protected")
         self.status_title.setStyleSheet(
             "font-size: 18px; font-weight: bold; color: #88C0D0; background: transparent;"
         )
         apply_text_glow(self.status_title, "#88C0D0", blur=15, opacity=130)
-        status_layout.addWidget(self.status_title)
+        status_header.addWidget(self.status_title)
+        status_header.addStretch()
+        status_layout.addLayout(status_header)
 
         self.status_desc = QLabel(
             "Fikrado real-time heuristic shield, YARA rules, and Windows Defender are actively monitoring "
@@ -102,23 +111,27 @@ class DashboardPage(QWidget):
         actions_row = QHBoxLayout()
         actions_row.setSpacing(12)
 
-        quick_scan_btn = QPushButton("⚡ Run Quick Scan")
+        quick_scan_btn = QPushButton("Run Quick Scan")
         quick_scan_btn.setProperty("primary", True)
+        set_icon(quick_scan_btn, "quick_scan", 16)
         quick_scan_btn.clicked.connect(lambda: self.navigate_to_page.emit(1))
         actions_row.addWidget(quick_scan_btn)
 
-        full_scan_btn = QPushButton("🔍 Deep Full Scan")
+        full_scan_btn = QPushButton("Deep Full Scan")
         full_scan_btn.setProperty("secondary", True)
+        set_icon(full_scan_btn, "full_scan", 16)
         full_scan_btn.clicked.connect(lambda: self.navigate_to_page.emit(2))
         actions_row.addWidget(full_scan_btn)
 
-        ports_btn = QPushButton("🌐 Scan Ports")
+        ports_btn = QPushButton("Scan Ports")
         ports_btn.setProperty("secondary", True)
+        set_icon(ports_btn, "port_scanner", 16)
         ports_btn.clicked.connect(lambda: self.navigate_to_page.emit(4))
         actions_row.addWidget(ports_btn)
 
-        tools_btn = QPushButton("🛠️ Tools Hub")
+        tools_btn = QPushButton("Tools Hub")
         tools_btn.setProperty("secondary", True)
+        set_icon(tools_btn, "tools", 16)
         tools_btn.clicked.connect(lambda: self.navigate_to_page.emit(7))
         actions_row.addWidget(tools_btn)
 
@@ -130,10 +143,10 @@ class DashboardPage(QWidget):
         stats_row = QHBoxLayout()
         stats_row.setSpacing(15)
 
-        self.card_files = StatCard("Files Scanned", "0", "Total objects analyzed", "#88C0D0", "📂")
-        self.card_threats = StatCard("Threats Blocked", "0", "Malware & PUPs blocked", "#BF616A", "🛡️")
-        self.card_realtime = StatCard("Real-Time Guard", "ACTIVE", "Monitoring Downloads & Temp", "#A3BE8C", "⚡")
-        self.card_vulns = StatCard("Known CVEs", "0", "CISA KEV active exploits", "#EBCB8B", "⚠️")
+        self.card_files = StatCard("Files Scanned", "0", "Total objects analyzed", "#88C0D0", "stat_files")
+        self.card_threats = StatCard("Threats Blocked", "0", "Malware & PUPs blocked", "#BF616A", "stat_threats")
+        self.card_realtime = StatCard("Real-Time Guard", "ACTIVE", "Processes, files, startup & network", "#A3BE8C", "stat_realtime")
+        self.card_vulns = StatCard("Known CVEs", "0", "CISA KEV active exploits", "#EBCB8B", "stat_vulns")
 
         stats_row.addWidget(self.card_files)
         stats_row.addWidget(self.card_threats)
@@ -181,12 +194,13 @@ class DashboardPage(QWidget):
         # Load dynamic state
         self.refresh_dashboard()
 
-    def _set_status(self, text: str, color: str):
-        """Updates the posture headline and keeps its glow color in sync."""
+    def _set_status(self, text: str, color: str, icon_name: str = "shield"):
+        """Updates the posture headline, icon and glow color together."""
         self.status_title.setText(text)
         self.status_title.setStyleSheet(
             f"font-size: 18px; font-weight: bold; color: {color}; background: transparent;"
         )
+        refresh_icon_label(self.status_icon, icon_name, 24)
         update_glow(self.status_title, color, 130)
 
     def refresh_dashboard(self):
@@ -196,20 +210,21 @@ class DashboardPage(QWidget):
         self.card_threats.set_value(f"{stats.get('total_threats', 0):,}")
         self.card_vulns.set_value(f"{stats.get('kev_count', 0):,}")
 
-        # Real-time state
-        rt_enabled = self.settings.get("realtime", "enabled", True)
-        self.card_realtime.set_value("ACTIVE" if rt_enabled else "OFF")
+        # Real-time state reflects the live guard, not just the saved preference.
+        rt_active = realtime_guard.is_active
+        self.card_realtime.set_value("ACTIVE" if rt_active else "PAUSED")
+        self.card_realtime.set_accent("#A3BE8C" if rt_active else "#EBCB8B")
 
         # System hardening audit
         checks, score = audit_system_hardening()
         self.gauge.set_score(score, animated=True)
 
         if score >= 80:
-            self._set_status("🛡️ All Systems Protected", "#88C0D0")
+            self._set_status("All Systems Protected", "#88C0D0", "shield")
         elif score >= 50:
-            self._set_status("⚠️ Security Posture Attention Required", "#EBCB8B")
+            self._set_status("Security Posture Attention Required", "#EBCB8B", "warning")
         else:
-            self._set_status("🚨 Critical Vulnerabilities Detected", "#BF616A")
+            self._set_status("Critical Vulnerabilities Detected", "#BF616A", "vuln")
 
         # Populate recent threats table
         recent = db.get_recent_threats(limit=10)
@@ -228,6 +243,7 @@ class DashboardPage(QWidget):
             self.threat_table.setItem(row, 2, QTableWidgetItem(t.get("threat_type", "Malware")))
             self.threat_table.setItem(row, 3, QTableWidgetItem(t.get("detection_engine", "Heuristic")))
 
-            path_item = QTableWidgetItem(t.get("file_path", ""))
-            path_item.setToolTip(t.get("file_path", ""))
+            full_path = t.get("file_path", "")
+            path_item = QTableWidgetItem(display_path(full_path))
+            path_item.setToolTip(full_path)
             self.threat_table.setItem(row, 4, path_item)

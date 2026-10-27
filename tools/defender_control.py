@@ -2,8 +2,8 @@
 Fikrado Security - Windows Defender Integration & Controls
 Communicates with Windows Defender to query status, trigger scans, and update definitions.
 """
-import subprocess
 from typing import Tuple
+from core.subprocess_utils import run_hidden
 from core.logger import logger
 from core.system_info import get_defender_status
 
@@ -17,7 +17,7 @@ class DefenderControl:
         """Forces an immediate Windows Defender signature update."""
         try:
             cmd = ["powershell", "-NoProfile", "-Command", "Update-MpSignature"]
-            res = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+            res = run_hidden(cmd, capture_output=True, text=True, timeout=30)
             if res.returncode == 0:
                 logger.info("Windows Defender signatures updated successfully.")
                 return True, "Windows Defender signatures successfully updated."
@@ -29,7 +29,7 @@ class DefenderControl:
         """Launches a native Windows Defender quick scan."""
         try:
             cmd = ["powershell", "-NoProfile", "-Command", "Start-MpScan -ScanType QuickScan"]
-            res = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+            res = run_hidden(cmd, capture_output=True, text=True, timeout=60)
             if res.returncode == 0:
                 return True, "Windows Defender Quick Scan initiated successfully."
             return False, f"Quick scan trigger failed: {res.stderr or res.stdout}"

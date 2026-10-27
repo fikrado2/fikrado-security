@@ -26,6 +26,8 @@ from core.quarantine import QuarantineManager
 from scanners.malware_scanner import MalwareScannerThread
 from ui.components.cards import StatCard, ThreatBadge
 from ui.components.toast import ToastNotification
+from ui.formatting import display_path
+from ui.icons import set_icon
 
 
 class ScanPage(QWidget):
@@ -103,9 +105,9 @@ class ScanPage(QWidget):
 
         # Metrics Row
         metrics_row = QHBoxLayout()
-        self.stat_scanned = StatCard("Objects Scanned", "0", "Items evaluated", "#88C0D0")
-        self.stat_threats = StatCard("Threats Found", "0", "Suspicious or malicious", "#BF616A")
-        self.stat_eta = StatCard("Estimated Time", "--", "Remaining calculation", "#EBCB8B")
+        self.stat_scanned = StatCard("Objects Scanned", "0", "Items evaluated", "#88C0D0", "stat_files")
+        self.stat_threats = StatCard("Threats Found", "0", "Suspicious or malicious", "#BF616A", "stat_threats")
+        self.stat_eta = StatCard("Estimated Time", "--", "Remaining calculation", "#EBCB8B", "clock")
         metrics_row.addWidget(self.stat_scanned)
         metrics_row.addWidget(self.stat_threats)
         metrics_row.addWidget(self.stat_eta)
@@ -125,19 +127,22 @@ class ScanPage(QWidget):
         btn_row = QHBoxLayout()
         btn_row.setSpacing(12)
 
-        self.start_btn = QPushButton("▶ Start Scan")
+        self.start_btn = QPushButton("Start Scan")
         self.start_btn.setProperty("primary", True)
+        set_icon(self.start_btn, "play", 15, "#1A1F27")
         self.start_btn.clicked.connect(self.start_scan)
         btn_row.addWidget(self.start_btn)
 
         self.pause_btn = QPushButton("Pause")
         self.pause_btn.setProperty("secondary", True)
+        set_icon(self.pause_btn, "pause", 14)
         self.pause_btn.setEnabled(False)
         self.pause_btn.clicked.connect(self.toggle_pause)
         btn_row.addWidget(self.pause_btn)
 
         self.cancel_btn = QPushButton("Cancel")
         self.cancel_btn.setProperty("danger", True)
+        set_icon(self.cancel_btn, "cancel", 14, "#FFFFFF")
         self.cancel_btn.setEnabled(False)
         self.cancel_btn.clicked.connect(self.cancel_scan)
         btn_row.addWidget(self.cancel_btn)
@@ -192,6 +197,7 @@ class ScanPage(QWidget):
         self.start_btn.setEnabled(False)
         self.pause_btn.setEnabled(True)
         self.pause_btn.setText("Pause")
+        set_icon(self.pause_btn, "pause", 14)
         self.cancel_btn.setEnabled(True)
 
         self.scanner_thread = MalwareScannerThread(
@@ -211,9 +217,11 @@ class ScanPage(QWidget):
         if self.scanner_thread._is_paused:
             self.scanner_thread.resume()
             self.pause_btn.setText("Pause")
+            set_icon(self.pause_btn, "pause", 14)
         else:
             self.scanner_thread.pause()
-            self.pause_btn.setText("▶ Resume")
+            self.pause_btn.setText("Resume")
+            set_icon(self.pause_btn, "play", 14)
 
     def cancel_scan(self):
         if self.scanner_thread:
@@ -258,8 +266,9 @@ class ScanPage(QWidget):
         self.table.setItem(row, 2, QTableWidgetItem(threat.get("threat_type", "Malware")))
         self.table.setItem(row, 3, QTableWidgetItem(threat.get("engine", "Heuristic")))
 
-        path_item = QTableWidgetItem(threat.get("file_path", ""))
-        path_item.setToolTip(threat.get("file_path", ""))
+        full_path = threat.get("file_path", "")
+        path_item = QTableWidgetItem(display_path(full_path))
+        path_item.setToolTip(full_path)
         self.table.setItem(row, 4, path_item)
 
         # Action Buttons Container
@@ -271,18 +280,21 @@ class ScanPage(QWidget):
         quarantine_btn = QPushButton("Quarantine")
         quarantine_btn.setProperty("danger", True)
         quarantine_btn.setStyleSheet("padding: 3px 8px; font-size: 11px;")
+        set_icon(quarantine_btn, "quarantine", 12, "#FFFFFF")
         quarantine_btn.clicked.connect(lambda _, t=threat, r=row: self._quarantine_threat(t, r))
         act_layout.addWidget(quarantine_btn)
 
-        ai_btn = QPushButton("🤖 AI Explain")
+        ai_btn = QPushButton("AI Explain")
         ai_btn.setProperty("secondary", True)
         ai_btn.setStyleSheet("padding: 3px 8px; font-size: 11px;")
+        set_icon(ai_btn, "ai_scan", 12)
         ai_btn.clicked.connect(lambda _, t=threat: self.request_ai_explain.emit(t))
         act_layout.addWidget(ai_btn)
 
         whitelist_btn = QPushButton("Whitelist")
         whitelist_btn.setProperty("secondary", True)
         whitelist_btn.setStyleSheet("padding: 3px 8px; font-size: 11px;")
+        set_icon(whitelist_btn, "shield", 12)
         whitelist_btn.clicked.connect(lambda _, t=threat, r=row: self._whitelist_threat(t, r))
         act_layout.addWidget(whitelist_btn)
 

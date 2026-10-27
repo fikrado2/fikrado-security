@@ -4,7 +4,6 @@ Allows users to review encrypted quarantined objects, restore them to original p
 or permanently delete them.
 """
 import os
-import subprocess
 from pathlib import Path
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
@@ -23,6 +22,8 @@ from config.settings import SettingsManager
 from core.quarantine import QuarantineManager
 from ui.components.cards import ThreatBadge
 from ui.components.toast import ToastNotification
+from ui.formatting import display_path
+from ui.icons import set_icon
 
 
 class QuarantinePage(QWidget):
@@ -56,13 +57,15 @@ class QuarantinePage(QWidget):
 
         # Toolbar
         tb = QHBoxLayout()
-        refresh_btn = QPushButton("🔄 Refresh Vault")
+        refresh_btn = QPushButton("Refresh Vault")
         refresh_btn.setProperty("primary", True)
+        set_icon(refresh_btn, "refresh", 15, "#1A1F27")
         refresh_btn.clicked.connect(self.refresh_table)
         tb.addWidget(refresh_btn)
 
-        open_folder_btn = QPushButton("📂 Open Vault Directory")
+        open_folder_btn = QPushButton("Open Vault Directory")
         open_folder_btn.setProperty("secondary", True)
+        set_icon(open_folder_btn, "folder", 15)
         open_folder_btn.clicked.connect(self._open_vault_folder)
         tb.addWidget(open_folder_btn)
 
@@ -70,12 +73,14 @@ class QuarantinePage(QWidget):
 
         self.btn_restore = QPushButton("Restore Selected File")
         self.btn_restore.setProperty("secondary", True)
+        set_icon(self.btn_restore, "restore", 15)
         self.btn_restore.setEnabled(False)
         self.btn_restore.clicked.connect(self._restore_selected)
         tb.addWidget(self.btn_restore)
 
         self.btn_delete = QPushButton("Delete Permanently")
         self.btn_delete.setProperty("danger", True)
+        set_icon(self.btn_delete, "trash", 15, "#FFFFFF")
         self.btn_delete.setEnabled(False)
         self.btn_delete.clicked.connect(self._delete_selected)
         tb.addWidget(self.btn_delete)
@@ -114,7 +119,10 @@ class QuarantinePage(QWidget):
             self.table.setItem(row, 2, QTableWidgetItem(it.get("threat_name", "Malware")))
             self.table.setItem(row, 3, QTableWidgetItem(it.get("threat_type", "General")))
             self.table.setItem(row, 4, QTableWidgetItem(it.get("detection_engine", "Heuristic")))
-            self.table.setItem(row, 5, QTableWidgetItem(it.get("original_path", "")))
+            original_path = it.get("original_path", "")
+            original_item = QTableWidgetItem(display_path(original_path))
+            original_item.setToolTip(original_path)
+            self.table.setItem(row, 5, original_item)
             self.table.setItem(row, 6, QTableWidgetItem(it.get("quarantine_time", "")))
 
         self.btn_restore.setEnabled(False)

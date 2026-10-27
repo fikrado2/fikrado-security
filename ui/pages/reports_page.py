@@ -3,7 +3,6 @@ Fikrado Security - Security Audit Reports Page
 Browse generated HTML & PDF audit reports, generate new full reports, and export to PDF.
 """
 import os
-import subprocess
 import time
 from pathlib import Path
 from PySide6.QtCore import Qt
@@ -25,6 +24,7 @@ from core.system_info import audit_system_hardening, get_windows_info
 from scanners.network_scanner import list_active_connections
 from scanners.vuln_scanner import correlate_with_cisa_kev, get_installed_software
 from ui.components.toast import ToastNotification
+from ui.icons import set_icon
 
 
 class ReportsPage(QWidget):
@@ -56,18 +56,21 @@ class ReportsPage(QWidget):
 
         # Toolbar
         tb = QHBoxLayout()
-        gen_btn = QPushButton("📑 Generate Executive Report")
+        gen_btn = QPushButton("Generate Executive Report")
         gen_btn.setProperty("primary", True)
+        set_icon(gen_btn, "report", 15, "#1A1F27")
         gen_btn.clicked.connect(self._generate_full_report)
         tb.addWidget(gen_btn)
 
-        ref_btn = QPushButton("🔄 Refresh List")
+        ref_btn = QPushButton("Refresh List")
         ref_btn.setProperty("secondary", True)
+        set_icon(ref_btn, "refresh", 15)
         ref_btn.clicked.connect(self.refresh_reports_list)
         tb.addWidget(ref_btn)
 
-        open_dir_btn = QPushButton("📂 Open Reports Folder")
+        open_dir_btn = QPushButton("Open Reports Folder")
         open_dir_btn.setProperty("secondary", True)
+        set_icon(open_dir_btn, "folder", 15)
         open_dir_btn.clicked.connect(self._open_reports_dir)
         tb.addWidget(open_dir_btn)
 
@@ -75,12 +78,14 @@ class ReportsPage(QWidget):
 
         self.btn_view = QPushButton("View in Browser")
         self.btn_view.setProperty("secondary", True)
+        set_icon(self.btn_view, "browser", 15)
         self.btn_view.setEnabled(False)
         self.btn_view.clicked.connect(self._view_selected_report)
         tb.addWidget(self.btn_view)
 
         self.btn_pdf = QPushButton("Export to PDF")
         self.btn_pdf.setProperty("secondary", True)
+        set_icon(self.btn_pdf, "save", 15)
         self.btn_pdf.setEnabled(False)
         self.btn_pdf.clicked.connect(self._export_selected_pdf)
         tb.addWidget(self.btn_pdf)

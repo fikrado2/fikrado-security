@@ -36,6 +36,7 @@ from tools.realtime_guard import realtime_guard
 from tools.startup_manager import startup_manager
 from ui.components.cards import ThreatBadge
 from ui.components.toast import ToastNotification
+from ui.icons import icon_label, load_icon, set_icon
 
 
 class ShredderWorker(QThread):
@@ -95,19 +96,20 @@ class ToolsHubPage(QWidget):
         self.tool_stack = QStackedWidget()
 
         tools = [
-            ("⚡  Real-Time & Defender", self._build_realtime_tab()),
-            ("🔥  Firewall Manager", self._build_firewall_tab()),
-            ("🚀  Startup Manager", self._build_startup_tab()),
-            ("⚙️  Process Manager", self._build_process_tab()),
-            ("🌐  Browser & Hosts", self._build_browser_hosts_tab()),
-            ("🗑️  Secure Shredder", self._build_shredder_tab()),
-            ("🔑  Password & Breach", self._build_password_tab()),
-            ("🛡️  Hardening Audit", self._build_hardening_tab()),
-            ("📡  Network & DNS", self._build_dns_tab()),
+            ("Real-Time & Defender", "realtime", self._build_realtime_tab()),
+            ("Firewall Manager", "firewall", self._build_firewall_tab()),
+            ("Startup Manager", "startup", self._build_startup_tab()),
+            ("Process Manager", "process", self._build_process_tab()),
+            ("Browser & Hosts", "browser", self._build_browser_hosts_tab()),
+            ("Secure Shredder", "shredder", self._build_shredder_tab()),
+            ("Password & Breach", "password", self._build_password_tab()),
+            ("Hardening Audit", "hardening", self._build_hardening_tab()),
+            ("Network & DNS", "dns", self._build_dns_tab()),
         ]
 
-        for label, panel in tools:
+        for label, icon_name, panel in tools:
             item = QListWidgetItem(label)
+            item.setIcon(load_icon(icon_name, 18))
             item.setSizeHint(QSize(0, 40))
             self.tool_list.addItem(item)
             self.tool_stack.addWidget(panel)
@@ -135,13 +137,19 @@ class ToolsHubPage(QWidget):
         c1_title.setStyleSheet("font-size: 16px; font-weight: bold; color: #88C0D0;")
         c1_layout.addWidget(c1_title)
 
-        self.rt_status_lbl = QLabel("Shield Status: Active (Monitoring Downloads, Temp, and New Processes)")
+        status_row = QHBoxLayout()
+        status_row.setSpacing(8)
+        self.rt_status_icon = icon_label("shield", 18)
+        status_row.addWidget(self.rt_status_icon)
+        self.rt_status_lbl = QLabel("Shield Status: Active")
         self.rt_status_lbl.setStyleSheet("color: #A3BE8C; font-weight: bold; font-size: 13px;")
-        c1_layout.addWidget(self.rt_status_lbl)
+        status_row.addWidget(self.rt_status_lbl, 1)
+        c1_layout.addLayout(status_row)
 
         btn_row = QHBoxLayout()
         self.btn_toggle_rt = QPushButton("Pause Real-Time Shield")
         self.btn_toggle_rt.setProperty("secondary", True)
+        set_icon(self.btn_toggle_rt, "pause", 15)
         self.btn_toggle_rt.clicked.connect(self._toggle_realtime_shield)
         btn_row.addWidget(self.btn_toggle_rt)
         btn_row.addStretch()
@@ -165,30 +173,48 @@ class ToolsHubPage(QWidget):
         def_btns = QHBoxLayout()
         btn_def_scan = QPushButton("Launch Defender Quick Scan")
         btn_def_scan.setProperty("primary", True)
+        set_icon(btn_def_scan, "search", 15, "#1A1F27")
         btn_def_scan.clicked.connect(self._run_defender_quick_scan)
         def_btns.addWidget(btn_def_scan)
 
         btn_def_up = QPushButton("Update Defender Signatures")
         btn_def_up.setProperty("secondary", True)
+        set_icon(btn_def_up, "update", 15)
         btn_def_up.clicked.connect(self._update_defender_sigs)
         def_btns.addWidget(btn_def_up)
         def_btns.addStretch()
         c2_layout.addLayout(def_btns)
         l.addWidget(card2)
         l.addStretch()
+        self._refresh_realtime_status()
         return w
 
+    def _refresh_realtime_status(self):
+        if realtime_guard.is_active:
+            self.rt_status_lbl.setText(
+                f"Shield Status: Active — {realtime_guard.scope_summary()}"
+            )
+            self.rt_status_lbl.setStyleSheet(
+                "color: #A3BE8C; font-weight: bold; font-size: 13px;"
+            )
+            self.btn_toggle_rt.setText("Pause Real-Time Shield")
+            set_icon(self.btn_toggle_rt, "pause", 15)
+        else:
+            self.rt_status_lbl.setText(
+                "Shield Status: Paused — no real-time checks are running"
+            )
+            self.rt_status_lbl.setStyleSheet(
+                "color: #EBCB8B; font-weight: bold; font-size: 13px;"
+            )
+            self.btn_toggle_rt.setText("Resume Real-Time Shield")
+            set_icon(self.btn_toggle_rt, "play", 15)
+
     def _toggle_realtime_shield(self):
-        if realtime_guard._running:
-            realtime_guard.stop_guard()
-            self.rt_status_lbl.setText("Shield Status: Paused")
-            self.rt_status_lbl.setStyleSheet("color: #BF616A; font-weight: bold;")
-            self.btn_toggle_rt.setText("Activate Real-Time Shield")
+        if realtime_guard.is_active:
+            realtime_guard.pause_guard()
         else:
             realtime_guard.start_guard()
-            self.rt_status_lbl.setText("Shield Status: Active (Monitoring Downloads, Temp, and New Processes)")
-            self.rt_status_lbl.setStyleSheet("color: #A3BE8C; font-weight: bold;")
-            self.btn_toggle_rt.setText("Pause Real-Time Shield")
+        self._refresh_realtime_status()
 
     def _run_defender_quick_scan(self):
         ToastNotification(self.window(), "Windows Defender", "Initiating Defender scan...", "info")
@@ -221,8 +247,9 @@ class ToolsHubPage(QWidget):
         btn_enable_all.clicked.connect(lambda: self._toggle_firewall("all", True))
         tc_l.addWidget(btn_enable_all)
 
-        btn_refresh_fw = QPushButton("🔄 Refresh")
+        btn_refresh_fw = QPushButton("Refresh")
         btn_refresh_fw.setProperty("secondary", True)
+        set_icon(btn_refresh_fw, "refresh", 15)
         btn_refresh_fw.clicked.connect(self._refresh_firewall_status)
         tc_l.addWidget(btn_refresh_fw)
 
@@ -303,8 +330,9 @@ class ToolsHubPage(QWidget):
         l.setSpacing(12)
 
         tb = QHBoxLayout()
-        ref_btn = QPushButton("🔄 Refresh Startup Entries")
+        ref_btn = QPushButton("Refresh Startup Entries")
         ref_btn.setProperty("secondary", True)
+        set_icon(ref_btn, "refresh", 15)
         ref_btn.clicked.connect(self._refresh_startup_items)
         tb.addWidget(ref_btn)
         tb.addStretch()
@@ -355,8 +383,9 @@ class ToolsHubPage(QWidget):
         l.setSpacing(12)
 
         tb = QHBoxLayout()
-        ref_btn = QPushButton("🔄 Refresh Processes")
+        ref_btn = QPushButton("Refresh Processes")
         ref_btn.setProperty("primary", True)
+        set_icon(ref_btn, "refresh", 15, "#1A1F27")
         ref_btn.clicked.connect(self._refresh_processes)
         tb.addWidget(ref_btn)
 
@@ -440,7 +469,7 @@ class ToolsHubPage(QWidget):
         hc_l.addWidget(h_title)
 
         is_clean, lines, flagged = browser_hosts_checker.check_hosts_file()
-        status_text = "✔ Hosts file is clean and uncorrupted." if is_clean else f"⚠️ Flagged {len(flagged)} suspicious domain redirects!"
+        status_text = "OK — Hosts file is clean and uncorrupted." if is_clean else f"Warning — {len(flagged)} suspicious domain redirects flagged!"
         h_status = QLabel(status_text)
         h_status.setStyleSheet(f"color: {'#A3BE8C' if is_clean else '#BF616A'}; font-weight: bold;")
         hc_l.addWidget(h_status)
@@ -551,8 +580,9 @@ class ToolsHubPage(QWidget):
         self.shred_progress.setValue(0)
         cl.addWidget(self.shred_progress)
 
-        self.btn_shred_now = QPushButton("🔥 Permanently Shred File Now")
+        self.btn_shred_now = QPushButton("Permanently Shred File Now")
         self.btn_shred_now.setProperty("danger", True)
+        set_icon(self.btn_shred_now, "shredder", 15, "#FFFFFF")
         self.btn_shred_now.clicked.connect(self._start_shredding)
         cl.addWidget(self.btn_shred_now)
 
@@ -620,8 +650,9 @@ class ToolsHubPage(QWidget):
         self.pwd_input.textChanged.connect(self._on_pwd_typed)
         inp_row.addWidget(self.pwd_input, 1)
 
-        self.btn_show_pwd = QPushButton("👁️ Show")
+        self.btn_show_pwd = QPushButton("Show")
         self.btn_show_pwd.setProperty("secondary", True)
+        set_icon(self.btn_show_pwd, "eye", 15)
         self.btn_show_pwd.clicked.connect(self._toggle_pwd_visibility)
         inp_row.addWidget(self.btn_show_pwd)
         cl.addLayout(inp_row)
@@ -636,15 +667,16 @@ class ToolsHubPage(QWidget):
         self.pwd_verdict_lbl.setStyleSheet("color: #9BA3AF; font-size: 13px; font-weight: bold;")
         cl.addWidget(self.pwd_verdict_lbl)
 
-        btn_check_hibp = QPushButton("🌐 Check Against Public Breach Databases (HaveIBeenPwned)")
+        btn_check_hibp = QPushButton("Check Against Public Breach Databases (HaveIBeenPwned)")
         btn_check_hibp.setProperty("primary", True)
+        set_icon(btn_check_hibp, "globe", 15, "#1A1F27")
         btn_check_hibp.clicked.connect(self._check_hibp)
         cl.addWidget(btn_check_hibp)
 
         self.breach_result_box = QTextEdit()
         self.breach_result_box.setReadOnly(True)
         self.breach_result_box.setFixedHeight(90)
-        self.breach_result_box.setStyleSheet("background-color: #2E3440; border: 1px solid #4C566A; font-size: 12px;")
+        self.breach_result_box.setStyleSheet("background-color: rgba(12, 16, 21, 175); border: 1px solid rgba(255, 255, 255, 20); border-radius: 9px; font-size: 12px;")
         cl.addWidget(self.breach_result_box)
 
         l.addWidget(card)
@@ -654,10 +686,12 @@ class ToolsHubPage(QWidget):
     def _toggle_pwd_visibility(self):
         if self.pwd_input.echoMode() == QLineEdit.Password:
             self.pwd_input.setEchoMode(QLineEdit.Normal)
-            self.btn_show_pwd.setText("🙈 Hide")
+            self.btn_show_pwd.setText("Hide")
+            set_icon(self.btn_show_pwd, "eye_off", 15)
         else:
             self.pwd_input.setEchoMode(QLineEdit.Password)
-            self.btn_show_pwd.setText("👁️ Show")
+            self.btn_show_pwd.setText("Show")
+            set_icon(self.btn_show_pwd, "eye", 15)
 
     def _on_pwd_typed(self, text: str):
         res = calculate_password_strength(text)
@@ -688,8 +722,9 @@ class ToolsHubPage(QWidget):
         tb.addWidget(t_lbl)
         tb.addStretch()
 
-        ref_btn = QPushButton("🔄 Re-run Audit")
+        ref_btn = QPushButton("Re-run Audit")
         ref_btn.setProperty("secondary", True)
+        set_icon(ref_btn, "refresh", 15)
         ref_btn.clicked.connect(self._refresh_hardening)
         tb.addWidget(ref_btn)
         l.addLayout(tb)
@@ -739,8 +774,9 @@ class ToolsHubPage(QWidget):
         self.dns_summary_lbl.setStyleSheet("color: #D8DEE9; font-size: 12px;")
         cl.addWidget(self.dns_summary_lbl)
 
-        btn_run = QPushButton("📡 Run Network && DNS Diagnostic")
+        btn_run = QPushButton("Run Network && DNS Diagnostic")
         btn_run.setProperty("primary", True)
+        set_icon(btn_run, "dns", 15, "#1A1F27")
         btn_run.clicked.connect(self._run_dns_diagnostic)
         cl.addWidget(btn_run)
         l.addWidget(card)

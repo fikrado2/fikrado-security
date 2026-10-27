@@ -6,10 +6,22 @@ import sys
 from pathlib import Path
 
 APP_NAME = "Fikrado Security"
-APP_VERSION = "1.1.0"
-APP_AUTHOR = "Fikrado CyberDefense"
+APP_VERSION = "1.2.0"
+APP_AUTHOR = "Fikrado Security"
+APP_PUBLISHER = "Fikrado Security"
+APP_COPYRIGHT = "Copyright © 2026 Fikrado Security"
 APP_DESCRIPTION = "Next-Generation Windows Security & Threat Defense Platform"
 APP_ID = "com.fikrado.security"
+
+# Public presence
+WEBSITE_URL = "https://fikrado2.github.io"
+LINKEDIN_URL = "https://www.linkedin.com/in/yahye-abdirahman/"
+GITHUB_URL = "https://github.com/fikrado-orgnasation/"
+SOCIAL_LINKS = (
+    ("website", "Website", WEBSITE_URL),
+    ("linkedin", "LinkedIn", LINKEDIN_URL),
+    ("github", "GitHub", GITHUB_URL),
+)
 
 # Detect if running as PyInstaller bundle
 if getattr(sys, 'frozen', False):

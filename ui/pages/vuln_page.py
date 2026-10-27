@@ -27,6 +27,7 @@ from scanners.vuln_scanner import (
 )
 from ui.components.cards import ThreatBadge
 from ui.components.toast import ToastNotification
+from ui.icons import set_icon
 
 
 class VulnAuditThread(QThread):
@@ -82,13 +83,15 @@ class VulnPage(QWidget):
 
         # Top Control Row
         ctrl_row = QHBoxLayout()
-        self.refresh_btn = QPushButton("🔍 Scan for Vulnerabilities && Updates")
+        self.refresh_btn = QPushButton("Scan for Vulnerabilities && Updates")
         self.refresh_btn.setProperty("primary", True)
+        set_icon(self.refresh_btn, "search", 15, "#1A1F27")
         self.refresh_btn.clicked.connect(self.start_audit)
         ctrl_row.addWidget(self.refresh_btn)
 
-        sync_kev_btn = QPushButton("🌐 Sync CISA KEV Feed")
+        sync_kev_btn = QPushButton("Sync CISA KEV Feed")
         sync_kev_btn.setProperty("secondary", True)
+        set_icon(sync_kev_btn, "cloud", 15)
         sync_kev_btn.clicked.connect(self.sync_cisa_catalog)
         ctrl_row.addWidget(sync_kev_btn)
 
@@ -133,8 +136,9 @@ class VulnPage(QWidget):
         tw_header.addWidget(tw_desc)
         tw_header.addStretch()
 
-        self.update_btn = QPushButton("⬆ Update Selected via winget")
+        self.update_btn = QPushButton("Update Selected via winget")
         self.update_btn.setProperty("primary", True)
+        set_icon(self.update_btn, "update", 15, "#1A1F27")
         self.update_btn.clicked.connect(self.update_selected_package)
         tw_header.addWidget(self.update_btn)
         tw_layout.addLayout(tw_header)
@@ -204,7 +208,7 @@ class VulnPage(QWidget):
 
     def _on_audit_finished(self, software, cisa_matches, winget_upgrades, hotfixes):
         self.refresh_btn.setEnabled(True)
-        self.refresh_btn.setText("🔍 Scan for Vulnerabilities && Updates")
+        self.refresh_btn.setText("Scan for Vulnerabilities && Updates")
 
         # 1. Populate CISA KEV Table
         self.kev_table.setRowCount(0)

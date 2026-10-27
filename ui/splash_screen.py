@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget
 )
-from config.constants import APP_VERSION, COLOR_BG_DARK, LOGO_PNG
+from config.constants import APP_PUBLISHER, APP_VERSION, LOGO_PNG
 from ui.effects import apply_text_glow, pulse_glow
 
 
@@ -31,10 +31,15 @@ class FikradoSplashScreen(QSplashScreen):
         self.container.setGeometry(10, 10, 500, 340)
         self.container.setStyleSheet("""
             QFrame#SplashCard {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
-                                            stop:0 #272D38, stop:1 #1F242C);
-                border: 1px solid rgba(136, 192, 208, 56);
-                border-radius: 20px;
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                            stop:0 rgba(255, 255, 255, 26),
+                                            stop:0.04 rgba(255, 255, 255, 10),
+                                            stop:0.30 rgba(56, 64, 80, 235),
+                                            stop:1 rgba(24, 29, 37, 250));
+                border: 1px solid rgba(255, 255, 255, 34);
+                border-top-color: rgba(255, 255, 255, 70);
+                border-bottom-color: rgba(0, 0, 0, 150);
+                border-radius: 22px;
             }
         """)
 
@@ -99,20 +104,25 @@ class FikradoSplashScreen(QSplashScreen):
         self.progress.setValue(10)
         self.progress.setStyleSheet("""
             QProgressBar {
-                background-color: #20252E;
-                border: none;
-                border-radius: 4px;
+                background-color: rgba(10, 13, 18, 180);
+                border: 1px solid rgba(255, 255, 255, 18);
+                border-top-color: rgba(0, 0, 0, 130);
+                border-radius: 5px;
             }
             QProgressBar::chunk {
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #FFD93D, stop:1 #88C0D0);
                 border-radius: 4px;
+                margin: 1px;
             }
         """)
         layout.addWidget(self.progress)
 
-        # 6. Version footer
-        version_lbl = QLabel(f"FIKRADO CYBERDEFENSE  ·  v{APP_VERSION}")
-        version_lbl.setStyleSheet("color: #6F7887; font-size: 9px; font-weight: 600; letter-spacing: 1.4px; background: transparent;")
+        # 6. Publisher / version footer
+        version_lbl = QLabel(f"{APP_PUBLISHER.upper()}  ·  v{APP_VERSION}")
+        version_lbl.setStyleSheet(
+            "color: #7F8A99; font-size: 9px; font-weight: 700; "
+            "letter-spacing: 1.6px; background: transparent;"
+        )
         version_lbl.setAlignment(Qt.AlignCenter)
         layout.addWidget(version_lbl)
 

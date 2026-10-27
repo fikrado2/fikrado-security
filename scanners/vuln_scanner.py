@@ -4,11 +4,11 @@ Audits installed applications, Windows hotfix patch levels, outdated apps via wi
 and matches against the CISA Known Exploited Vulnerabilities (KEV) catalog.
 """
 import re
-import subprocess
 import winreg
 from typing import Dict, List, Optional, Tuple
 from core.database import db
 from core.logger import logger
+from core.subprocess_utils import run_hidden
 
 
 def get_installed_software() -> List[dict]:
@@ -77,7 +77,7 @@ def get_windows_hotfixes() -> List[dict]:
             "powershell", "-NoProfile", "-Command",
             "Get-HotFix | Select-Object HotFixID, Description, InstalledOn | ConvertTo-Json"
         ]
-        res = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+        res = run_hidden(cmd, capture_output=True, text=True, timeout=10)
         if res.returncode == 0 and res.stdout.strip():
             import json
             data = json.loads(res.stdout)
@@ -99,7 +99,7 @@ def get_winget_upgrades() -> List[dict]:
     upgrades = []
     try:
         cmd = ["winget", "upgrade", "--accept-source-agreements"]
-        res = subprocess.run(cmd, capture_output=True, text=True, timeout=20)
+        res = run_hidden(cmd, capture_output=True, text=True, timeout=20)
         if res.returncode == 0:
             lines = res.stdout.splitlines()
             start_parsing = False
@@ -167,7 +167,7 @@ def execute_winget_upgrade(app_id: str) -> Tuple[bool, str]:
             "winget", "upgrade", "--id", app_id,
             "--silent", "--accept-source-agreements", "--accept-package-agreements"
         ]
-        res = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+        res = run_hidden(cmd, capture_output=True, text=True, timeout=120)
         if res.returncode == 0:
             return True, f"Successfully initiated upgrade for package {app_id}."
         return False, f"winget upgrade failed (code {res.returncode}): {res.stderr or res.stdout}"

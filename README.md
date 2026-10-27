@@ -1,11 +1,22 @@
 # Fikrado Security - Enterprise Windows Threat Defense Platform
 
 [![Platform](https://img.shields.io/badge/Platform-Windows%2010%20%2F%2011-blue.svg)](https://microsoft.com/windows)
+[![Version](https://img.shields.io/badge/Version-1.2.0-FFD93D.svg)](https://github.com/fikrado2/fikrado-security/releases)
 [![Python](https://img.shields.io/badge/Python-3.11%2B-blue.svg)](https://python.org)
 [![Framework](https://img.shields.io/badge/UI-PySide6%20%28Qt%29-green.svg)](https://qt.io)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 **Fikrado Security** is a standalone, next-generation Windows desktop cybersecurity and threat defense platform. Packaged as a double-click executable (`FikradoSecurity.exe`), it requires zero Python runtime dependencies and automatically requests Administrator elevation via an embedded UAC manifest.
+
+**Publisher:** Fikrado Security · **Website:** [fikrado2.github.io](https://fikrado2.github.io) · **LinkedIn:** [Yahye Abdirahman](https://www.linkedin.com/in/yahye-abdirahman/) · **GitHub:** [fikrado-orgnasation](https://github.com/fikrado-orgnasation/)
+
+### What's New in 1.2.0
+- **Glass + 3D interface:** layered translucent surfaces, gradient highlights, soft depth and a painted ambient backdrop across every page.
+- **Colored vector icons:** 59 hand-tuned SVG icons replace every emoji in the interface, with semantic colors for safe, warning, high and critical states.
+- **Wider real-time shield:** watches user folders, startup persistence, new network listeners, removable drives and optional full drive roots — not just Downloads and Temp.
+- **Native Windows behavior:** rounded DWM window chrome, system tray presence, close-to-tray protection, and a live shield status pill.
+- **Silent background execution:** every PowerShell, netsh, winget, Defender and scanner command runs through a hidden-subprocess helper, so no console windows ever flash on screen.
+- **Release metadata:** embedded publisher, product name, icon and version information (`1.2.0.0`) in the Windows executable.
 
 ---
 
@@ -98,7 +109,7 @@ fikrado-security/
 
 ### 8. All-In-One Security Tools Hub
 Integrates 10 dedicated system utilities:
-1. **Real-Time Protection Shield:** Filesystem watcher monitoring Downloads and Temp folders, plus real-time process execution monitoring.
+1. **Real-Time Protection Shield:** Continuous monitoring of user folders, startup persistence, new network listeners, removable drives, and optional full drive roots, plus real-time process execution monitoring.
 2. **Microsoft Windows Defender Controls:** Check status, force quick scans, and update virus definitions.
 3. **Windows Firewall Manager:** Toggle Domain, Private, and Public profiles, review active rules, and add custom block rules.
 4. **Startup Applications Manager:** Audit autorun registry keys (`HKCU`/`HKLM` Run/RunOnce) and Startup folders; safely disable/enable items.

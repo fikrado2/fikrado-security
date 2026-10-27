@@ -20,6 +20,7 @@ hiddenimports = [
     'PySide6.QtGui',
     'PySide6.QtWidgets',
     'PySide6.QtPrintSupport',
+    'PySide6.QtSvg',
     'yara',
     'pefile',
     'psutil',
@@ -77,5 +78,6 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     icon=str(project_root / 'assets' / 'logo.ico'),
+    version=str(project_root / 'version_info.txt'),
     uac_admin=True,
 )

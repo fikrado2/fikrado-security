@@ -5,10 +5,10 @@ Inspects Windows configuration, UAC elevation, Defender status, and security pos
 import ctypes
 import os
 import platform
-import subprocess
 import sys
 from typing import Dict, List, Tuple
 from core.logger import logger
+from core.subprocess_utils import run_hidden
 
 
 def is_admin() -> bool:
@@ -54,7 +54,7 @@ def get_defender_status() -> dict:
             "powershell", "-NoProfile", "-NonInteractive", "-Command",
             "Get-MpComputerStatus | Select-Object RealTimeProtectionEnabled, AntivirusEnabled, AntispywareEnabled, BehaviorMonitorEnabled, AntivirusSignatureAge | ConvertTo-Json"
         ]
-        res = subprocess.run(cmd, capture_output=True, text=True, timeout=8)
+        res = run_hidden(cmd, capture_output=True, text=True, timeout=8)
         if res.returncode == 0 and res.stdout.strip():
             import json
             data = json.loads(res.stdout)
@@ -109,7 +109,7 @@ def audit_system_hardening() -> Tuple[List[dict], int]:
     # 3. Windows Firewall Check
     firewall_pass = True
     try:
-        fw_res = subprocess.run(
+        fw_res = run_hidden(
             ["netsh", "advfirewall", "show", "allprofiles", "state"],
             capture_output=True, text=True, timeout=5
         )
@@ -132,7 +132,7 @@ def audit_system_hardening() -> Tuple[List[dict], int]:
     smbv1_disabled = True
     try:
         cmd = ["powershell", "-NoProfile", "-Command", "Get-WindowsOptionalFeature -Online -FeatureName SMB1Protocol -ErrorAction SilentlyContinue | Select-Object -ExpandProperty State"]
-        smb_res = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
+        smb_res = run_hidden(cmd, capture_output=True, text=True, timeout=5)
         if "Enabled" in smb_res.stdout:
             smbv1_disabled = False
     except Exception:

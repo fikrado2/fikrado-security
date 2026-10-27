@@ -15,6 +15,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout
 )
 from ui.effects import apply_text_glow
+from ui.icons import icon_label
 
 
 class AIConsentDialog(QDialog):
@@ -26,7 +27,7 @@ class AIConsentDialog(QDialog):
         self.setFixedSize(540, 480)
         self.setStyleSheet("""
             QDialog {
-                background-color: #2E3440;
+                background-color: #1B2029;
                 color: #ECEFF4;
             }
         """)
@@ -55,8 +56,8 @@ class AIConsentDialog(QDialog):
         preview_box.setPlainText(payload_preview)
         preview_box.setReadOnly(True)
         preview_box.setStyleSheet(
-            "background-color: #242933; border: 1px solid #4C566A; border-radius: 8px; "
-            "font-family: Consolas; font-size: 11px; padding: 8px;"
+            "background-color: rgba(12, 16, 21, 175); border: 1px solid rgba(255, 255, 255, 20); "
+            "border-radius: 9px; font-family: Consolas; font-size: 11px; padding: 8px;"
         )
         layout.addWidget(preview_box)
 
@@ -104,16 +105,21 @@ class NetworkConsentDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("Authorized Testing Consent")
         self.setFixedSize(480, 260)
-        self.setStyleSheet("background-color: #2E3440; color: #ECEFF4;")
+        self.setStyleSheet("background-color: #1B2029; color: #ECEFF4;")
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(24, 20, 24, 20)
         layout.setSpacing(14)
 
-        title = QLabel("⚠️ Authorization & Compliance Notice")
+        title_row = QHBoxLayout()
+        title_row.setSpacing(9)
+        title_row.addWidget(icon_label("warning", 20))
+        title = QLabel("Authorization & Compliance Notice")
         title.setStyleSheet("font-size: 16px; font-weight: bold; color: #EBCB8B; background: transparent;")
         apply_text_glow(title, "#EBCB8B", blur=15, opacity=140)
-        layout.addWidget(title)
+        title_row.addWidget(title)
+        title_row.addStretch()
+        layout.addLayout(title_row)
 
         desc = QLabel(
             f"You are about to initiate an active network port probe on <b>{target}</b>.<br><br>"

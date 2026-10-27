@@ -3,11 +3,11 @@ Fikrado Security - Network & DNS Leak Diagnostic Tool
 Audits network interfaces, default gateways, configured DNS servers, and checks for external DNS leaks.
 """
 import socket
-import subprocess
 from typing import Dict, List, Tuple
 import psutil
 import requests
 from core.logger import logger
+from core.subprocess_utils import run_hidden
 
 
 class DNSLeakTester:
@@ -52,7 +52,7 @@ class DNSLeakTester:
         servers = []
         try:
             cmd = ["powershell", "-NoProfile", "-Command", "Get-DnsClientServerAddress -AddressFamily IPv4 | Select-Object -ExpandProperty ServerAddresses"]
-            res = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
+            res = run_hidden(cmd, capture_output=True, text=True, timeout=5)
             if res.returncode == 0:
                 for line in res.stdout.splitlines():
                     clean = line.strip()

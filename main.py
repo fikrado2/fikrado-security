@@ -17,7 +17,15 @@ from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QFont, QFontDatabase, QGuiApplication, QIcon
 from PySide6.QtWidgets import QApplication
 
-from config.constants import ASSETS_DIR, LOGO_ICO, LOGO_PNG
+from config.constants import (
+    APP_ID,
+    APP_NAME,
+    APP_PUBLISHER,
+    APP_VERSION,
+    ASSETS_DIR,
+    LOGO_ICO,
+    LOGO_PNG,
+)
 from core.logger import logger
 from core.updater import init_offline_signatures
 from tools.realtime_guard import realtime_guard
@@ -66,7 +74,9 @@ def main():
     # Set Windows Process AppUserModelID for crisp taskbar icon & notifications
     try:
         import ctypes
-        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("Fikrado.Security.Endpoint.1.0")
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(
+            f"{APP_ID}.{APP_VERSION}"
+        )
     except Exception:
         pass
 
@@ -80,8 +90,11 @@ def main():
 
     app = QApplication(sys.argv)
     configure_application(app)
-    app.setApplicationName("Fikrado Security")
-    app.setOrganizationName("Fikrado CyberDefense")
+    app.setApplicationName(APP_NAME)
+    app.setApplicationDisplayName(APP_NAME)
+    app.setApplicationVersion(APP_VERSION)
+    app.setOrganizationName(APP_PUBLISHER)
+    app.setOrganizationDomain("fikrado2.github.io")
 
     # App Icon
     if LOGO_ICO.exists():

@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget
 )
-from ui.effects import apply_text_glow
+from ui.icons import icon_label, load_icon
 
 
 class ToastNotification(QFrame):
@@ -25,20 +25,24 @@ class ToastNotification(QFrame):
         self.setAttribute(Qt.WA_ShowWithoutActivating)
 
         color_map = {
-            "success": ("#A3BE8C", "✓"),
-            "warning": ("#EBCB8B", "!"),
-            "error": ("#BF616A", "×"),
-            "info": ("#88C0D0", "i"),
+            "success": ("#A3BE8C", "check"),
+            "warning": ("#EBCB8B", "warning"),
+            "error": ("#BF616A", "cancel"),
+            "info": ("#88C0D0", "info"),
         }
-        accent_color, icon_symbol = color_map.get(level.lower(), ("#88C0D0", "i"))
+        accent_color, icon_name = color_map.get(level.lower(), ("#88C0D0", "info"))
 
         self.setStyleSheet(f"""
             QFrame#ToastCard {{
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
-                                            stop:0 #3C4352, stop:1 #333A47);
-                border: 1px solid rgba(76, 86, 106, 217);
-                border-left: 4px solid {accent_color};
-                border-radius: 12px;
+                                            stop:0 rgba(60, 68, 84, 246),
+                                            stop:0.5 rgba(46, 53, 66, 246),
+                                            stop:1 rgba(34, 40, 51, 248));
+                border: 1px solid rgba(255, 255, 255, 30);
+                border-top-color: rgba(255, 255, 255, 55);
+                border-bottom-color: rgba(0, 0, 0, 120);
+                border-left: 3px solid {accent_color};
+                border-radius: 14px;
             }}
         """)
 
@@ -53,11 +57,7 @@ class ToastNotification(QFrame):
         layout.setSpacing(12)
 
         # Icon Label
-        icon_lbl = QLabel(icon_symbol)
-        icon_lbl.setStyleSheet(
-            f"color: {accent_color}; font-size: 18px; font-weight: bold; background: transparent;"
-        )
-        apply_text_glow(icon_lbl, accent_color, blur=14, opacity=155)
+        icon_lbl = icon_label(icon_name, 22)
         layout.addWidget(icon_lbl)
 
         # Text Layout
@@ -66,7 +66,6 @@ class ToastNotification(QFrame):
 
         title_lbl = QLabel(title)
         title_lbl.setStyleSheet("color: #ECEFF4; font-weight: 700; font-size: 13px; background: transparent;")
-        apply_text_glow(title_lbl, "#CFEAF1", blur=9, opacity=75)
         text_layout.addWidget(title_lbl)
 
         msg_lbl = QLabel(message)
@@ -77,8 +76,9 @@ class ToastNotification(QFrame):
         layout.addLayout(text_layout)
 
         # Close button
-        close_btn = QPushButton("×")
-        close_btn.setStyleSheet("background: transparent; border: none; color: #9BA3AF; font-size: 16px;")
+        close_btn = QPushButton()
+        close_btn.setStyleSheet("background: transparent; border: none;")
+        close_btn.setIcon(load_icon("close", 10, "#9BA3AF"))
         close_btn.setFixedSize(20, 20)
         close_btn.setCursor(Qt.PointingHandCursor)
         close_btn.clicked.connect(self.hide)

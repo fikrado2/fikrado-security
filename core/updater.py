@@ -3,7 +3,6 @@ Fikrado Security - Signature & Vulnerability Database Updater
 Manages automatic and on-demand synchronization of threat signatures and CISA KEV feeds.
 """
 import json
-import subprocess
 import time
 from pathlib import Path
 from typing import Tuple
@@ -12,6 +11,7 @@ from config.constants import SIGNATURES_DIR
 from config.security_rules import BUILTIN_MALWARE_HASHES
 from core.database import db
 from core.logger import logger
+from core.subprocess_utils import run_hidden
 
 CISA_KEV_URL = "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
 OFFLINE_KEV_FILE = SIGNATURES_DIR / "cisa_kev.json"
@@ -118,7 +118,7 @@ def update_cisa_kev_online() -> Tuple[bool, str]:
 def run_freshclam(freshclam_path: str = "freshclam.exe") -> Tuple[bool, str]:
     """Runs ClamAV freshclam to update antivirus definitions."""
     try:
-        res = subprocess.run([freshclam_path], capture_output=True, text=True, timeout=60)
+        res = run_hidden([freshclam_path], capture_output=True, text=True, timeout=60)
         if res.returncode == 0:
             return True, "ClamAV virus signatures updated successfully."
         return False, f"freshclam exited with code {res.returncode}: {res.stderr[:200]}"

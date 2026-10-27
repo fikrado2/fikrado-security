@@ -28,6 +28,7 @@ from scanners.network_scanner import (
 from ui.components.cards import ThreatBadge
 from ui.components.dialogs import NetworkConsentDialog
 from ui.components.toast import ToastNotification
+from ui.icons import set_icon
 
 
 class RemoteScanThread(QThread):
@@ -82,8 +83,9 @@ class PortScannerPage(QWidget):
 
         # Toolbar
         tb_row = QHBoxLayout()
-        refresh_btn = QPushButton("🔄 Refresh Local Connections")
+        refresh_btn = QPushButton("Refresh Local Connections")
         refresh_btn.setProperty("primary", True)
+        set_icon(refresh_btn, "refresh", 15, "#1A1F27")
         refresh_btn.clicked.connect(self.refresh_connections)
         tb_row.addWidget(refresh_btn)
 
@@ -129,7 +131,7 @@ class PortScannerPage(QWidget):
 
         self.detail_text = QTextEdit()
         self.detail_text.setReadOnly(True)
-        self.detail_text.setStyleSheet("background-color: #2E3440; border: 1px solid #434C5E; font-size: 12px; line-height: 1.4;")
+        self.detail_text.setStyleSheet("background-color: rgba(12, 16, 21, 150); border: 1px solid rgba(255, 255, 255, 18); border-radius: 9px; font-size: 12px;")
         self.detail_text.setHtml("<p style='color: #9BA3AF;'>Select any row on the left to view plain-language analysis, potential threat impact, and one-click remediation.</p>")
         detail_layout.addWidget(self.detail_text)
 
@@ -149,7 +151,7 @@ class PortScannerPage(QWidget):
         splitter.addWidget(detail_card)
         splitter.setSizes([650, 350])
         tl_layout.addWidget(splitter)
-        self.tabs.addTab(tab_local, "Local Listening Ports & Connections")
+        self.tabs.addTab(tab_local, "Local Listening Ports && Connections")
 
         # Tab 2: Remote / Subnet Scanner
         tab_remote = QWidget()

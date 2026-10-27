@@ -15,6 +15,7 @@ from PySide6.QtWidgets import (
     QPlainTextEdit,
     QPushButton,
     QScrollArea,
+    QSizePolicy,
     QSplitter,
     QTextEdit,
     QVBoxLayout,
@@ -23,6 +24,7 @@ from PySide6.QtWidgets import (
 from plugins.plugin_manager import plugin_manager
 from ui.components.dialogs import AIConsentDialog
 from ui.components.toast import ToastNotification
+from ui.icons import refresh_icon_label, set_icon
 
 
 class AIWorkerThread(QThread):
@@ -77,6 +79,7 @@ class AIScanPage(QWidget):
         header.setSpacing(4)
         title = QLabel("AI Threat Intelligence & Neural Analysis")
         title.setStyleSheet("font-size: 24px; font-weight: 800; color: #ECEFF4;")
+        title.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
         header.addWidget(title)
 
         desc = QLabel(
@@ -85,12 +88,14 @@ class AIScanPage(QWidget):
         )
         desc.setStyleSheet("color: #9BA3AF; font-size: 13px;")
         desc.setWordWrap(True)
+        desc.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
         header.addWidget(desc)
-        layout.addLayout(header)
+        layout.addLayout(header, 0)
 
         # Top Bar: Provider Selection + Privacy Mode Pill
         top_bar = QFrame()
         top_bar.setProperty("card", True)
+        top_bar.setFixedHeight(68)
         tb_layout = QHBoxLayout(top_bar)
         tb_layout.setContentsMargins(16, 12, 16, 12)
         tb_layout.setSpacing(15)
@@ -100,21 +105,34 @@ class AIScanPage(QWidget):
         tb_layout.addWidget(prov_lbl)
 
         self.provider_combo = QComboBox()
+        self.provider_combo.setMinimumWidth(260)
+        self.provider_combo.setMaximumWidth(340)
         self._populate_providers()
         self.provider_combo.currentIndexChanged.connect(self._on_provider_changed)
-        tb_layout.addWidget(self.provider_combo, 1)
+        tb_layout.addWidget(self.provider_combo, 0)
+        tb_layout.addStretch(1)
 
-        self.privacy_lbl = QLabel("🛡️ Metadata Only")
-        self.privacy_lbl.setToolTip(
+        self.privacy_pill = QFrame()
+        self.privacy_pill.setObjectName("PrivacyPill")
+        pill_layout = QHBoxLayout(self.privacy_pill)
+        pill_layout.setContentsMargins(9, 0, 11, 0)
+        pill_layout.setSpacing(6)
+        self.privacy_icon = QLabel()
+        self.privacy_icon.setFixedSize(14, 14)
+        self.privacy_icon.setStyleSheet("background: transparent; border: none;")
+        pill_layout.addWidget(self.privacy_icon)
+        self.privacy_lbl = QLabel("Metadata Only")
+        self.privacy_lbl.setStyleSheet("background: transparent; border: none;")
+        pill_layout.addWidget(self.privacy_lbl)
+        self.privacy_pill.setFixedHeight(24)
+        self._set_privacy("Metadata Only", "shield", "#A3BE8C", 38)
+        self.privacy_pill.setToolTip(
             "Privacy mode: only safe file metadata (names, hashes, sizes) is sent to the "
             "selected AI provider. Raw file contents stay on this device."
         )
-        self.privacy_lbl.setStyleSheet("color: #A3BE8C; font-weight: bold; font-size: 11px; background: rgba(163, 190, 140, 38); padding: 0 10px; border-radius: 11px;")
-        self.privacy_lbl.setFixedHeight(24)
-        self.privacy_lbl.setAlignment(Qt.AlignCenter)
-        tb_layout.addWidget(self.privacy_lbl, 0, Qt.AlignVCenter)
+        tb_layout.addWidget(self.privacy_pill, 0, Qt.AlignVCenter)
 
-        layout.addWidget(top_bar)
+        layout.addWidget(top_bar, 0)
 
         # Splitter: Left Task Input Panels, Right AI Response Output
         splitter = QSplitter(Qt.Horizontal)
@@ -143,6 +161,7 @@ class AIScanPage(QWidget):
 
         pick_btn = QPushButton("Select Target File")
         pick_btn.setProperty("secondary", True)
+        set_icon(pick_btn, "folder", 15)
         pick_btn.clicked.connect(self._browse_file)
         pick_row.addWidget(pick_btn)
         cf_layout.addLayout(pick_row)
@@ -154,11 +173,12 @@ class AIScanPage(QWidget):
         self.code_input = QPlainTextEdit()
         self.code_input.setPlaceholderText("Paste obfuscated script, base64 payload, or suspicious command here...")
         self.code_input.setFixedHeight(120)
-        self.code_input.setStyleSheet("background-color: #2E3440; border: 1px solid #4C566A; font-family: Consolas; font-size: 11px;")
+        self.code_input.setStyleSheet("background-color: rgba(12, 16, 21, 175); border: 1px solid rgba(255, 255, 255, 20); border-radius: 9px; font-family: Consolas; font-size: 11px;")
         cf_layout.addWidget(self.code_input)
 
-        self.btn_analyze_file = QPushButton("🚀 Run AI Deep Code Analysis")
+        self.btn_analyze_file = QPushButton("Run AI Deep Code Analysis")
         self.btn_analyze_file.setProperty("primary", True)
+        set_icon(self.btn_analyze_file, "brain", 16, "#1A1F27")
         self.btn_analyze_file.clicked.connect(self._trigger_file_analysis)
         cf_layout.addWidget(self.btn_analyze_file)
         left_layout.addWidget(card_file)
@@ -182,11 +202,13 @@ class AIScanPage(QWidget):
         audit_btns = QHBoxLayout()
         btn_audit_ports = QPushButton("Audit Ports && Startup")
         btn_audit_ports.setProperty("secondary", True)
+        set_icon(btn_audit_ports, "network", 15)
         btn_audit_ports.clicked.connect(self._trigger_ports_analysis)
         audit_btns.addWidget(btn_audit_ports)
 
         btn_audit_report = QPushButton("Generate Remediation Roadmap")
         btn_audit_report.setProperty("secondary", True)
+        set_icon(btn_audit_report, "report", 15)
         btn_audit_report.clicked.connect(self._trigger_report_analysis)
         audit_btns.addWidget(btn_audit_report)
 
@@ -211,6 +233,7 @@ class AIScanPage(QWidget):
 
         copy_btn = QPushButton("Copy Briefing")
         copy_btn.setProperty("secondary", True)
+        set_icon(copy_btn, "report", 15)
         copy_btn.clicked.connect(self._copy_output)
         rc_header.addWidget(copy_btn)
         rc_layout.addLayout(rc_header)
@@ -219,12 +242,13 @@ class AIScanPage(QWidget):
         self.output_text.setReadOnly(True)
         self.output_text.setStyleSheet("""
             QTextEdit {
-                background-color: #242933;
-                border: 1px solid #434C5E;
+                background-color: rgba(12, 16, 21, 150);
+                border: 1px solid rgba(255, 255, 255, 18);
+                border-radius: 11px;
                 color: #ECEFF4;
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                font-family: "Segoe UI", "Segoe UI Variable Text", sans-serif;
                 font-size: 13px;
-                line-height: 1.5;
+                padding: 12px;
             }
         """)
         self.output_text.setHtml(
@@ -234,7 +258,7 @@ class AIScanPage(QWidget):
         splitter.addWidget(right_card)
 
         splitter.setSizes([450, 550])
-        layout.addWidget(splitter)
+        layout.addWidget(splitter, 1)
 
     def _populate_providers(self):
         self.provider_combo.clear()
@@ -248,23 +272,38 @@ class AIScanPage(QWidget):
                 selected_idx = idx
         self.provider_combo.setCurrentIndex(selected_idx)
 
+    def _set_privacy(self, text: str, icon_name: str, color: str, alpha: int):
+        refresh_icon_label(self.privacy_icon, icon_name, 14)
+        self.privacy_lbl.setText(text)
+        self.privacy_lbl.setStyleSheet(
+            f"color: {color}; font-weight: bold; font-size: 11px; "
+            "background: transparent; border: none;"
+        )
+        value = color.lstrip("#")
+        r, g, b = int(value[0:2], 16), int(value[2:4], 16), int(value[4:6], 16)
+        self.privacy_pill.setStyleSheet(f"""
+            QFrame#PrivacyPill {{
+                background-color: rgba({r}, {g}, {b}, {alpha});
+                border: 1px solid rgba({r}, {g}, {b}, 120);
+                border-radius: 11px;
+            }}
+        """)
+
     def _on_provider_changed(self):
         provider_id = self.provider_combo.currentData()
         if provider_id:
             plugin_manager.settings.set("ai", "active_provider", provider_id)
             plugin = plugin_manager.get_plugin(provider_id)
             if plugin and plugin.is_local:
-                self.privacy_lbl.setText("🛡️ Local On-Device")
-                self.privacy_lbl.setToolTip(
+                self._set_privacy("Local On-Device", "shield", "#A3BE8C", 38)
+                self.privacy_pill.setToolTip(
                     "Local provider: all analysis runs on this machine. No data leaves your device."
                 )
-                self.privacy_lbl.setStyleSheet("color: #A3BE8C; font-weight: bold; font-size: 11px; background: rgba(163, 190, 140, 38); padding: 0 10px; border-radius: 11px;")
             else:
-                self.privacy_lbl.setText("☁️ Cloud Consent Active")
-                self.privacy_lbl.setToolTip(
+                self._set_privacy("Cloud Consent Active", "cloud", "#88C0D0", 38)
+                self.privacy_pill.setToolTip(
                     "Cloud provider: only the metadata or snippet you explicitly approve is transmitted."
                 )
-                self.privacy_lbl.setStyleSheet("color: #88C0D0; font-weight: bold; font-size: 11px; background: rgba(136, 192, 208, 38); padding: 0 10px; border-radius: 11px;")
 
     def _browse_file(self):
         f, _ = QFileDialog.getOpenFileName(self, "Select Suspicious File for AI Analysis")
@@ -352,7 +391,7 @@ class AIScanPage(QWidget):
                 plugin_manager.set_cloud_consent(True)
 
         self.output_text.setHtml(
-            "<div style='padding: 20px; color: #88C0D0; font-size: 14px;'>🧠 <b>AI Neural Reasoning in Progress...</b><br>Contacting provider and computing security risk evaluation...</div>"
+            "<div style='padding: 20px; color: #88C0D0; font-size: 14px;'><b>AI Neural Reasoning in Progress...</b><br>Contacting provider and computing security risk evaluation...</div>"
         )
 
         self.worker = AIWorkerThread(task_type, provider_id, payload)

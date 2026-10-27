@@ -38,8 +38,14 @@ DEFAULT_SETTINGS: Dict[str, Any] = {
         "enabled": True,
         "scan_downloads": True,
         "scan_temp": True,
+        "monitor_user_folders": True,
         "monitor_processes": True,
+        "monitor_startup": True,
+        "monitor_network": True,
+        "monitor_removable": True,
+        "monitor_all_drives": False,
         "check_interval_seconds": 3,
+        "max_realtime_file_mb": 64,
     },
     "ai": {
         "active_provider": "gemini",  # openrouter, openai, anthropic, gemini, ollama, custom

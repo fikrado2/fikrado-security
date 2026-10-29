@@ -1,15 +1,25 @@
 """
 Fikrado Security - System Information & Security Auditing
-Inspects Windows configuration, UAC elevation, Defender status, and security posture.
+Inspects OS configuration, elevation, firewall/AV status, and security posture.
+Windows-specific probes (registry, PowerShell, netsh) are used on Windows;
+Linux and macOS receive native equivalents or an explicit "not verifiable".
 """
-import ctypes
 import os
 import platform
+import shutil
 import sys
 import threading
 import time
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 from core.logger import logger
+from core.platforms import (
+    IS_LINUX,
+    IS_MACOS,
+    IS_WINDOWS,
+    PLATFORM_NAME,
+    is_admin,
+    hosts_file_path,
+)
 from core.subprocess_utils import run_hidden
 
 try:
@@ -24,30 +34,63 @@ _DEFENDER_CACHE = {"status": None, "timestamp": 0.0}
 _HARDENING_CACHE_LOCK = threading.Lock()
 _HARDENING_CACHE = {"checks": None, "score": 0, "timestamp": 0.0}
 
+# Sentinel returned on non-Windows hosts: Windows Defender does not exist there,
+# so the UI must show "unavailable" instead of a fake ENABLED/DISABLED state.
+_DEFENDER_UNAVAILABLE = {
+    "available": False,
+    "installed": False,
+    "realtime_protection": False,
+    "antivirus_enabled": False,
+    "antispyware_enabled": False,
+    "behavior_monitor": False,
+    "definitions_updated": False,
+    "antivirus_signature_age": 0,
+    "raw_status": "Unavailable",
+}
 
-def is_admin() -> bool:
-    """Returns True if the process has elevated Administrator privileges."""
-    try:
-        return bool(ctypes.windll.shell32.IsUserAnAdmin())
-    except Exception:
-        return False
 
+def get_system_info() -> dict:
+    """Gathers OS name, version, build, architecture, and system specs."""
+    if IS_WINDOWS:
+        win_ver = platform.win32_ver()
+        os_name = "Windows"
+        os_version = win_ver[0]
+        os_build = win_ver[1]
+        os_service_pack = win_ver[2]
+        computer_name = os.getenv("COMPUTERNAME", "Unknown")
+        username = os.getenv("USERNAME", "Unknown")
+    elif IS_MACOS:
+        os_name = "macOS"
+        os_version = platform.mac_ver()[0]
+        os_build = platform.release()
+        os_service_pack = ""
+        computer_name = platform.node() or "Unknown"
+        username = os.getenv("USER", "Unknown")
+    else:
+        os_name = "Linux"
+        os_version = platform.freedesktop_os_release().get("PRETTY_NAME", "") if hasattr(platform, "freedesktop_os_release") else ""
+        os_version = os_version or platform.release()
+        os_build = platform.release()
+        os_service_pack = ""
+        computer_name = platform.node() or "Unknown"
+        username = os.getenv("USER", "Unknown")
 
-def get_windows_info() -> dict:
-    """Gathers Windows OS version, build, architecture, and system specs."""
-    win_ver = platform.win32_ver()
     return {
-        "os_name": "Windows",
-        "os_version": win_ver[0],
-        "os_build": win_ver[1],
-        "os_service_pack": win_ver[2],
+        "os_name": os_name,
+        "os_version": os_version,
+        "os_build": os_build,
+        "os_service_pack": os_service_pack,
         "architecture": platform.machine(),
-        "processor": platform.processor(),
-        "computer_name": os.getenv("COMPUTERNAME", "Unknown"),
-        "username": os.getenv("USERNAME", "Unknown"),
+        "processor": platform.processor() or platform.machine(),
+        "computer_name": computer_name,
+        "username": username,
         "is_admin": is_admin(),
         "python_version": platform.python_version(),
     }
+
+
+# Backwards-compatible alias: older call sites import get_windows_info.
+get_windows_info = get_system_info
 
 
 def _read_registry_value(hive, path: str, name: str):
@@ -64,7 +107,11 @@ def _read_registry_value(hive, path: str, name: str):
 
 def _query_defender_status_deep() -> dict:
     """Queries Windows Defender status via PowerShell Get-MpComputerStatus."""
+    if not IS_WINDOWS:
+        return dict(_DEFENDER_UNAVAILABLE)
+
     default_status = {
+        "available": True,
         "installed": True,
         "realtime_protection": True,
         "antivirus_enabled": True,
@@ -85,6 +132,7 @@ def _query_defender_status_deep() -> dict:
             import json
             data = json.loads(res.stdout)
             return {
+                "available": True,
                 "installed": True,
                 "realtime_protection": bool(data.get("RealTimeProtectionEnabled", True)),
                 "antivirus_enabled": bool(data.get("AntivirusEnabled", True)),
@@ -102,7 +150,11 @@ def _query_defender_status_deep() -> dict:
 
 def _query_defender_status_fast() -> dict:
     """Reads Defender state from the registry (instant, no PowerShell)."""
+    if not IS_WINDOWS:
+        return dict(_DEFENDER_UNAVAILABLE)
+
     default_status = {
+        "available": True,
         "installed": True,
         "realtime_protection": True,
         "antivirus_enabled": True,
@@ -130,6 +182,7 @@ def _query_defender_status_fast() -> dict:
     )
     enabled = not (disable_av == 1 or disable_rt == 1 or policy_rt == 1)
     return {
+        "available": True,
         "installed": True,
         "realtime_protection": enabled,
         "antivirus_enabled": enabled,
@@ -176,7 +229,15 @@ _FIREWALL_PROFILES = (
 
 
 def get_firewall_profiles_status(deep: bool = False) -> Dict[str, bool]:
-    """Returns firewall state for all profiles, using the registry by default."""
+    """
+    Returns firewall state for all profiles, using the registry by default.
+
+    On Linux/macOS Windows profiles do not exist, so an empty dict is returned
+    and callers must fall back to :func:`get_firewall_enabled`.
+    """
+    if not IS_WINDOWS:
+        return {}
+
     if deep:
         status = {"Domain": True, "Private": True, "Public": True}
         try:
@@ -214,8 +275,52 @@ def get_firewall_profiles_status(deep: bool = False) -> Dict[str, bool]:
     return status
 
 
+def get_firewall_enabled(deep: bool = False) -> Optional[bool]:
+    """
+    Cross-platform single firewall verdict.
+
+    Returns True/False when the host firewall state can be determined, or
+    ``None`` when no supported firewall backend is available.
+    """
+    if IS_WINDOWS:
+        profiles = get_firewall_profiles_status(deep=deep)
+        return all(profiles.values()) if profiles else None
+
+    if IS_MACOS:
+        socketfilterfw = "/usr/libexec/ApplicationFirewall/socketfilterfw"
+        if os.path.exists(socketfilterfw):
+            try:
+                res = run_hidden([socketfilterfw, "--getglobalstate"], timeout=5)
+                if res.returncode == 0:
+                    return "enabled" in res.stdout.lower()
+            except Exception as exc:
+                logger.debug(f"socketfilterfw probe failed: {exc}")
+        return None
+
+    # Linux: prefer a firewall manager CLI, then fall back to the raw backends.
+    probes = (
+        (["ufw", "status"], lambda out: out.strip().startswith("Status: active")),
+        (["firewall-cmd", "--state"], lambda out: out.strip() == "running"),
+        (["nft", "list", "ruleset"], lambda out: bool(out.strip())),
+        (["iptables", "-S"], lambda out: bool(out.strip())),
+    )
+    for cmd, predicate in probes:
+        if not shutil.which(cmd[0]):
+            continue
+        try:
+            res = run_hidden(cmd, timeout=6)
+            if res.returncode == 0:
+                return predicate(res.stdout)
+        except Exception as exc:
+            logger.debug(f"Firewall probe {cmd[0]} failed: {exc}")
+    return None
+
+
 def _smb1_disabled(deep: bool = False) -> bool:
     """Checks whether the legacy SMBv1 protocol is disabled."""
+    if not IS_WINDOWS:
+        return True
+
     if deep:
         try:
             cmd = [
@@ -254,15 +359,144 @@ def _smb1_disabled(deep: bool = False) -> bool:
     return build >= 16299
 
 
+def _audit_hardening_posix(deep: bool = False) -> Tuple[List[dict], int]:
+    """
+    Security posture audit for Linux and macOS.
+
+    Only checks that can actually be evaluated on these platforms are listed;
+    Windows-only controls (UAC, SmartScreen, SMBv1, RDP, Defender) are omitted
+    rather than reported as passing. ``N/A`` checks are excluded from the score.
+    """
+    checks: List[dict] = []
+
+    # 1. Privilege elevation (root / sudo)
+    admin_state = is_admin()
+    checks.append({
+        "category": "Privilege",
+        "name": "Process Elevation (Root)",
+        "status": "Pass" if admin_state else "Warning",
+        "points": 15 if admin_state else 8,
+        "max_points": 15,
+        "detail": (
+            "Running with root privileges; low-level scans and remediation actions are fully available."
+            if admin_state else
+            "Running as a regular user; some scans and remediation actions will be limited."
+        ),
+        "remediation": (
+            "Launch the application with elevated privileges if deeper inspection is required."
+            if not admin_state else "No action required."
+        ),
+    })
+
+    # 2. Host firewall
+    firewall_state = get_firewall_enabled(deep=deep)
+    if firewall_state is None:
+        checks.append({
+            "category": "Network",
+            "name": "Host Firewall",
+            "status": "N/A",
+            "points": 0,
+            "max_points": 0,
+            "detail": "No supported firewall backend (ufw, firewalld, nftables, socketfilterfw) was detected.",
+            "remediation": "Install and enable ufw/firewalld to enforce host-level packet filtering.",
+        })
+    else:
+        checks.append({
+            "category": "Network",
+            "name": "Host Firewall",
+            "status": "Pass" if firewall_state else "Critical",
+            "points": 25 if firewall_state else 0,
+            "max_points": 25,
+            "detail": "Host firewall is active and filtering inbound traffic." if firewall_state else "Host firewall is disabled — inbound traffic is unrestricted.",
+            "remediation": "Enable the host firewall (e.g. `sudo ufw enable` or `sudo firewall-cmd --set-default-zone=public`).",
+        })
+
+    # 3. Resolver hosts file integrity
+    try:
+        from tools.browser_hosts_check import browser_hosts_checker
+
+        is_clean, _lines, flagged = browser_hosts_checker.check_hosts_file()
+        hosts_ok = bool(is_clean)
+        hosts_detail = (
+            f"{hosts_file_path()} is clean."
+            if hosts_ok else
+            f"{len(flagged)} suspicious redirect(s) found in {hosts_file_path()}."
+        )
+    except Exception as exc:
+        logger.debug(f"Hosts integrity check skipped: {exc}")
+        hosts_ok = True
+        hosts_detail = f"{hosts_file_path()} could not be read."
+
+    checks.append({
+        "category": "Resolver Integrity",
+        "name": "Hosts File Integrity",
+        "status": "Pass" if hosts_ok else "Critical",
+        "points": 25 if hosts_ok else 0,
+        "max_points": 25,
+        "detail": hosts_detail,
+        "remediation": "Remove unauthorized DNS redirections from the system hosts file.",
+    })
+
+    # 4. Optional antivirus engine availability
+    clam_found = bool(shutil.which("clamscan"))
+    checks.append({
+        "category": "Antivirus",
+        "name": "ClamAV Scanner Availability",
+        "status": "Pass" if clam_found else "Warning",
+        "points": 15 if clam_found else 5,
+        "max_points": 15,
+        "detail": (
+            "ClamAV (clamscan) is installed and available for signature-based scanning."
+            if clam_found else
+            "ClamAV is not installed; only YARA, hash and heuristic engines are active."
+        ),
+        "remediation": "Install ClamAV with your package manager to enable signature scanning.",
+    })
+
+    # 5. Real-time shield state
+    try:
+        from tools.realtime_guard import realtime_guard
+
+        shield_active = bool(realtime_guard.is_active)
+    except Exception as exc:
+        logger.debug(f"Shield state lookup failed: {exc}")
+        shield_active = False
+
+    checks.append({
+        "category": "Runtime Protection",
+        "name": "Fikrado Real-Time Shield",
+        "status": "Pass" if shield_active else "Warning",
+        "points": 20 if shield_active else 0,
+        "max_points": 20,
+        "detail": "Real-time filesystem, process and network monitoring is running." if shield_active else "Real-time protection is paused or disabled.",
+        "remediation": "Resume the Real-Time Shield from the Security Tools page.",
+    })
+
+    return _score_checks(checks)
+
+
+def _score_checks(checks: List[dict]) -> Tuple[List[dict], int]:
+    """Computes a 0-100 score, ignoring checks whose max_points is 0 (N/A)."""
+    total_points = sum(c["points"] for c in checks)
+    max_possible = sum(c["max_points"] for c in checks)
+    score = int((total_points / max_possible) * 100) if max_possible > 0 else 75
+    return checks, score
+
+
 def audit_system_hardening(deep: bool = False) -> Tuple[List[dict], int]:
     """
-    Performs a security hardening audit against key Windows security controls.
+    Performs a security hardening audit against platform security controls.
 
-    By default every check reads the registry or an in-process API, so the
-    dashboard score is available instantly.  ``deep`` re-runs the slower
+    Windows keeps its original registry/PowerShell based checklist; Linux and
+    macOS run an equivalent audit built from checks that exist on those hosts.
+    By default every Windows check reads the registry or an in-process API, so
+    the dashboard score is available instantly.  ``deep`` re-runs the slower
     PowerShell/netsh probes for an explicit, user-initiated audit.
     Returns (checklist, security_score_0_to_100).
     """
+    if not IS_WINDOWS:
+        return _audit_hardening_posix(deep=deep)
+
     checks = []
 
     # 1. Admin / UAC Elevation
@@ -379,11 +613,7 @@ def audit_system_hardening(deep: bool = False) -> Tuple[List[dict], int]:
         "remediation": "Re-enable UAC via Control Panel -> User Account Control Settings."
     })
 
-    total_points = sum(c["points"] for c in checks)
-    max_possible = sum(c["max_points"] for c in checks)
-    score = int((total_points / max_possible) * 100) if max_possible > 0 else 75
-
-    return checks, score
+    return _score_checks(checks)
 
 
 def get_hardening_audit(

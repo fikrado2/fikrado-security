@@ -4,6 +4,7 @@ Handles loading, updating, and saving user configuration to AppData.
 """
 import json
 import logging
+import os
 from typing import Any, Dict
 from config.constants import SETTINGS_FILE
 
@@ -24,8 +25,8 @@ DEFAULT_SETTINGS: Dict[str, Any] = {
         "scan_archives": True,
         "enable_yara": True,
         "enable_clamav": True,
-        "clamscan_path": "clamscan.exe",
-        "freshclam_path": "freshclam.exe",
+        "clamscan_path": "clamscan.exe" if os.name == "nt" else "clamscan",
+        "freshclam_path": "freshclam.exe" if os.name == "nt" else "freshclam",
         "virustotal_api_key": "",
         "auto_quarantine_critical": False,
     },

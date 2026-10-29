@@ -2,14 +2,21 @@
 Fikrado Security - Persistence & Process Anomaly Inspector
 Scans Registry Run/RunOnce, Startup folders, Scheduled Tasks, WMI subscriptions,
 and running processes for stealth persistence and suspicious execution chains.
+Registry/WMI/Task-Scheduler checks are Windows-only; startup folders and process
+inspection are implemented for every supported platform.
 """
 import os
-import winreg
 from pathlib import Path
 from typing import Dict, List
 import psutil
 from core.logger import logger
+from core.platforms import IS_WINDOWS, all_startup_dirs, temp_dir
 from core.subprocess_utils import run_hidden
+
+try:
+    import winreg
+except ImportError:  # pragma: no cover - non-Windows import safety
+    winreg = None
 
 
 class PersistenceInspector:
@@ -27,8 +34,11 @@ class PersistenceInspector:
         return findings
 
     def check_registry_persistence(self) -> List[dict]:
-        """Inspects Run, RunOnce, and Winlogon keys."""
+        """Inspects Run, RunOnce, and Winlogon keys (Windows only)."""
         findings = []
+        if winreg is None:
+            return findings
+
         reg_targets = [
             (winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Run", "HKCU Run"),
             (winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\RunOnce", "HKCU RunOnce"),
@@ -72,18 +82,21 @@ class PersistenceInspector:
         return findings
 
     def check_startup_folders(self) -> List[dict]:
-        """Checks user and common Startup directory files."""
+        """Checks user and system Startup/autostart directory files."""
         findings = []
-        user_startup = Path(os.getenv("APPDATA", "")) / "Microsoft/Windows/Start Menu/Programs/Startup"
-        common_startup = Path(os.getenv("PROGRAMDATA", "C:/ProgramData")) / "Microsoft/Windows/Start Menu/Programs/Startup"
+        startup_dirs = all_startup_dirs()
+        script_exts = (
+            (".vbs", ".bat", ".cmd", ".ps1", ".hta", ".js") if IS_WINDOWS
+            else (".sh", ".py", ".command")
+        )
 
-        for folder in (user_startup, common_startup):
+        for folder in startup_dirs:
             if folder.exists() and folder.is_dir():
                 try:
                     for item in folder.iterdir():
                         if item.is_file():
                             ext = item.suffix.lower()
-                            if ext in (".vbs", ".bat", ".cmd", ".ps1", ".hta", ".js"):
+                            if ext in script_exts:
                                 findings.append({
                                     "engine": "Persistence Inspector",
                                     "threat_name": f"Suspicious Script in Startup Folder: {item.name}",
@@ -98,8 +111,11 @@ class PersistenceInspector:
         return findings
 
     def check_scheduled_tasks(self) -> List[dict]:
-        """Queries Windows Task Scheduler for unusual tasks."""
+        """Queries the Windows Task Scheduler for unusual tasks."""
         findings = []
+        if not IS_WINDOWS:
+            return findings
+
         try:
             cmd = ["schtasks", "/query", "/fo", "csv", "/v"]
             res = run_hidden(cmd, capture_output=True, text=True, timeout=8)
@@ -140,6 +156,9 @@ class PersistenceInspector:
     def check_services(self) -> List[dict]:
         """Inspects non-standard Windows services running from user directories."""
         findings = []
+        if not IS_WINDOWS or not hasattr(psutil, "win_service_iter"):
+            return findings
+
         try:
             for s in psutil.win_service_iter():
                 try:
@@ -163,8 +182,11 @@ class PersistenceInspector:
         return findings
 
     def check_wmi_subscriptions(self) -> List[dict]:
-        """Queries WMI root\\subscription for persistence events."""
+        """Queries WMI root\\subscription for persistence events (Windows only)."""
         findings = []
+        if not IS_WINDOWS:
+            return findings
+
         try:
             cmd = ["powershell", "-NoProfile", "-Command", "Get-CimInstance -Namespace root\\subscription -ClassName __EventConsumer | Select-Object Name, CommandLineTemplate | ConvertTo-Json"]
             res = run_hidden(cmd, capture_output=True, text=True, timeout=6)
@@ -234,8 +256,13 @@ class PersistenceInspector:
                                 "file_path": pexe or pname
                             })
 
-                # Check 2: Process running from Temp
-                if pexe and ("\\appdata\\local\\temp" in pexe or "\\temp\\" in pexe):
+                # Check 2: Process running from a temporary folder
+                in_temp = (
+                    ("\\appdata\\local\\temp" in pexe or "\\temp\\" in pexe)
+                    if IS_WINDOWS
+                    else (pexe.startswith(str(temp_dir())) or pexe.startswith("/tmp/") or pexe.startswith("/var/tmp/"))
+                )
+                if in_temp:
                     # Check if process has open network sockets
                     try:
                         p_obj = psutil.Process(pid)

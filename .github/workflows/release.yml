@@ -1,0 +1,78 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            target: win
+            artifact: FikradoSecurity.exe
+          - os: ubuntu-latest
+            target: linux
+            artifact: Fikrado-Security.AppImage
+          - os: macos-latest
+            target: mac
+            artifact: Fikrado-Security.dmg
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Build (${{ matrix.target }})
+        run: |
+          python scripts/build.py ${{ matrix.target }}
+          # For Linux: build AppImage; for macOS: build DMG; for Windows: build.exe
+
+      - name: Package Linux AppImage (+.deb optional)
+        if: matrix.target == 'linux'
+        run: |
+          # Example: linuxdeploy / AppImageBuilder step
+          echo "Packaging Linux AppImage..."
+
+      - name: Package macOS DMG
+        if: matrix.target == 'mac'
+        run: |
+          echo "Packaging macOS DMG..."
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.target }}-build
+          path: dist/
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/**
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

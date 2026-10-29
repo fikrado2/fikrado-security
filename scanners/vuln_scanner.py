@@ -1,22 +1,49 @@
 """
 Fikrado Security - Known and Emerging Vulnerability Check
-Audits installed applications, Windows hotfix patch levels, outdated apps via winget,
-and matches against the CISA Known Exploited Vulnerabilities (KEV) catalog.
+Audits installed applications, OS patch levels, and outdated packages, and
+matches them against the CISA Known Exploited Vulnerabilities (KEV) catalog.
+
+Installed software is enumerated from the registry on Windows, from the native
+package manager on Linux, and from Homebrew/system packages on macOS.
 """
+import os
+import platform
 import re
-import winreg
+import shutil
 from typing import Dict, List, Optional, Tuple
-from core.database import db
 from core.logger import logger
+from core.platforms import IS_LINUX, IS_MACOS, IS_WINDOWS
 from core.subprocess_utils import run_hidden
+
+try:
+    import winreg
+except ImportError:  # pragma: no cover - non-Windows import safety
+    winreg = None
+
+from core.database import db
 
 
 def get_installed_software() -> List[dict]:
     """
-    Enumerates installed software from 32-bit, 64-bit machine and user registry keys.
+    Enumerates installed software:
+      * Windows: 32-bit/64-bit machine and user registry uninstall keys
+      * Linux: dpkg, rpm, pacman, apk or flatpak (whichever is present)
+      * macOS: Homebrew + system package receipts
     """
+    if IS_WINDOWS:
+        return _get_installed_software_windows()
+    if IS_MACOS:
+        return _get_installed_software_macos()
+    return _get_installed_software_linux()
+
+
+def _get_installed_software_windows() -> List[dict]:
+    """Enumerates installed software from the Windows uninstall registry keys."""
     software_list = []
     seen = set()
+
+    if winreg is None:
+        return software_list
 
     registry_roots = [
         (winreg.HKEY_LOCAL_MACHINE, r"Software\Microsoft\Windows\CurrentVersion\Uninstall", winreg.KEY_WOW64_64KEY),
@@ -69,9 +96,111 @@ def get_installed_software() -> List[dict]:
     return software_list
 
 
+def _parse_package_lines(lines: List[str], delimiter: str, max_fields: int = 2) -> List[dict]:
+    """Converts `name<del>version` package lines into the shared software shape."""
+    software_list: List[dict] = []
+    seen = set()
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+        parts = line.split(delimiter, max_fields - 1)
+        name = parts[0].strip()
+        version = parts[1].strip() if len(parts) > 1 else "Unknown"
+        if not name:
+            continue
+        key = (name.lower(), version.lower())
+        if key in seen:
+            continue
+        seen.add(key)
+        software_list.append({
+            "name": name,
+            "version": version or "Unknown",
+            "publisher": "System Package Manager",
+            "registry_id": name,
+        })
+    software_list.sort(key=lambda x: x["name"].lower())
+    return software_list
+
+
+def _get_installed_software_linux() -> List[dict]:
+    """Enumerates installed software from the native Linux package manager."""
+    candidates = (
+        (["dpkg-query", "-W", "-f", "${Package} ${Version}\n"], " ", "dpkg"),
+        (["rpm", "-qa", "--qf", "%{NAME} %{VERSION}-%{RELEASE}\n"], " ", "rpm"),
+        (["pacman", "-Q"], " ", "pacman"),
+        (["apk", "info"], "\n", "apk"),
+        (["flatpak", "list", "--columns=application,version"], "\t", "flatpak"),
+    )
+    for cmd, delimiter, _backend in candidates:
+        if not shutil.which(cmd[0]):
+            continue
+        try:
+            res = run_hidden(cmd, capture_output=True, text=True, timeout=20)
+            if res.returncode == 0 and res.stdout.strip():
+                return _parse_package_lines(res.stdout.splitlines(), delimiter)
+        except Exception as e:
+            logger.debug(f"Package enumeration via {cmd[0]} failed: {e}")
+
+    logger.debug("No supported Linux package manager found for software inventory.")
+    return []
+
+
+def _get_installed_software_macos() -> List[dict]:
+    """Enumerates installed software from Homebrew and macOS package receipts."""
+    software_list: List[dict] = []
+    seen = set()
+
+    def _add(name: str, version: str, publisher: str):
+        name = name.strip()
+        version = (version or "Unknown").strip()
+        if not name:
+            return
+        key = (name.lower(), version.lower())
+        if key in seen:
+            return
+        seen.add(key)
+        software_list.append({
+            "name": name,
+            "version": version or "Unknown",
+            "publisher": publisher,
+            "registry_id": name,
+        })
+
+    if shutil.which("brew"):
+        for formulae in (["brew", "list", "--versions"], ["brew", "list", "--cask", "--versions"]):
+            try:
+                res = run_hidden(formulae, capture_output=True, text=True, timeout=30)
+                if res.returncode == 0:
+                    for line in res.stdout.splitlines():
+                        parts = line.split()
+                        if parts:
+                            _add(parts[0], " ".join(parts[1:]) or "Unknown", "Homebrew")
+            except Exception as e:
+                logger.debug(f"Homebrew enumeration failed: {e}")
+
+    if shutil.which("pkgutil"):
+        try:
+            res = run_hidden(["pkgutil", "--pkgs"], capture_output=True, text=True, timeout=30)
+            if res.returncode == 0:
+                for pkg in res.stdout.splitlines():
+                    if pkg.strip():
+                        _add(pkg.strip(), "Unknown", "Apple Installer")
+        except Exception as e:
+            logger.debug(f"pkgutil enumeration failed: {e}")
+
+    software_list.sort(key=lambda x: x["name"].lower())
+    return software_list
+
+
 def get_windows_hotfixes() -> List[dict]:
     """Retrieves installed Windows security updates and KB patch levels."""
     hotfixes = []
+    if not IS_WINDOWS:
+        # Windows-only data source; other platforms report patch state through
+        # their package manager (see get_installed_software).
+        return hotfixes
+
     try:
         cmd = [
             "powershell", "-NoProfile", "-Command",
@@ -95,8 +224,11 @@ def get_windows_hotfixes() -> List[dict]:
 
 
 def get_winget_upgrades() -> List[dict]:
-    """Queries winget for available software package upgrades."""
+    """Queries winget for available software package upgrades (Windows only)."""
     upgrades = []
+    if not IS_WINDOWS:
+        return upgrades
+
     try:
         cmd = ["winget", "upgrade", "--accept-source-agreements"]
         res = run_hidden(cmd, capture_output=True, text=True, timeout=20)
@@ -161,7 +293,12 @@ def correlate_with_cisa_kev(software_list: List[dict]) -> List[dict]:
 
 
 def execute_winget_upgrade(app_id: str) -> Tuple[bool, str]:
-    """Executes a non-blocking winget package upgrade."""
+    """Executes a non-blocking winget package upgrade (Windows only)."""
+    if not IS_WINDOWS:
+        return False, (
+            "In-app upgrades use winget and are only available on Windows. "
+            "Use your platform package manager to apply updates."
+        )
     try:
         cmd = [
             "winget", "upgrade", "--id", app_id,

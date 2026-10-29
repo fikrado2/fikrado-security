@@ -3,10 +3,12 @@ Fikrado Security - Network & DNS Leak Diagnostic Tool
 Audits network interfaces, default gateways, configured DNS servers, and checks for external DNS leaks.
 """
 import socket
+from pathlib import Path
 from typing import Dict, List, Tuple
 import psutil
 import requests
 from core.logger import logger
+from core.platforms import IS_WINDOWS
 from core.subprocess_utils import run_hidden
 
 
@@ -48,18 +50,47 @@ class DNSLeakTester:
         return adapters
 
     def get_configured_dns_servers(self) -> List[str]:
-        """Retrieves active DNS server addresses via PowerShell Get-DnsClientServerAddress."""
+        """Retrieves active DNS server addresses via the OS resolver."""
         servers = []
+        if IS_WINDOWS:
+            try:
+                cmd = ["powershell", "-NoProfile", "-Command", "Get-DnsClientServerAddress -AddressFamily IPv4 | Select-Object -ExpandProperty ServerAddresses"]
+                res = run_hidden(cmd, capture_output=True, text=True, timeout=5)
+                if res.returncode == 0:
+                    for line in res.stdout.splitlines():
+                        clean = line.strip()
+                        if clean and clean not in servers:
+                            servers.append(clean)
+                return servers
+            except Exception as e:
+                logger.debug(f"DNS server retrieval notice: {e}")
+
+        # POSIX: parse /etc/resolv.conf (best effort)
         try:
-            cmd = ["powershell", "-NoProfile", "-Command", "Get-DnsClientServerAddress -AddressFamily IPv4 | Select-Object -ExpandProperty ServerAddresses"]
-            res = run_hidden(cmd, capture_output=True, text=True, timeout=5)
-            if res.returncode == 0:
-                for line in res.stdout.splitlines():
-                    clean = line.strip()
-                    if clean and clean not in servers:
-                        servers.append(clean)
+            resolv = Path("/etc/resolv.conf")
+            if resolv.exists():
+                for line in resolv.read_text(encoding="utf-8", errors="ignore").splitlines():
+                    parts = line.strip().split()
+                    if len(parts) >= 2 and parts[0] == "nameserver":
+                        ns = parts[1]
+                        if ns not in servers:
+                            servers.append(ns)
         except Exception as e:
-            logger.debug(f"DNS server retrieval notice: {e}")
+            logger.debug(f"/etc/resolv.conf parse notice: {e}")
+
+        # macOS fallback: scutil --dns
+        if not servers:
+            try:
+                res = run_hidden(["scutil", "--dns"], capture_output=True, text=True, timeout=5)
+                if res.returncode == 0:
+                    for line in res.stdout.splitlines():
+                        s = line.strip()
+                        if "server" in s.lower() and ":" in s:
+                            ip = s.rsplit(":", 1)[-1].strip()
+                            if ip and ip not in servers:
+                                servers.append(ip)
+            except Exception as e:
+                logger.debug(f"scutil DNS lookup notice: {e}")
         return servers
 
     def check_public_ip_and_leak(self) -> dict:

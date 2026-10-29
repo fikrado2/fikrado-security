@@ -10,7 +10,7 @@ APP_VERSION = "2.6.87"
 APP_AUTHOR = "Fikrado Security"
 APP_PUBLISHER = "Fikrado Security"
 APP_COPYRIGHT = "Copyright © 2026 Fikrado Security"
-APP_DESCRIPTION = "Next-Generation Windows Security & Threat Defense Platform"
+APP_DESCRIPTION = "Next-Generation Cross-Platform Security & Threat Defense Platform"
 APP_ID = "com.fikrado.security"
 
 # Public presence
@@ -37,8 +37,20 @@ LOGO_ICO = ASSETS_DIR / "logo.ico"
 ICONS_DIR = ASSETS_DIR / "icons"
 PLUGINS_DIR = BASE_DIR / "plugins"
 
-# Persistent AppData paths
-APPDATA_BASE = Path(os.getenv("APPDATA", os.path.expanduser("~"))) / "FikradoSecurity"
+# Persistent per-user application data directory (per OS convention):
+#   Windows: %APPDATA%\FikradoSecurity
+#   macOS:   ~/Library/Application Support/FikradoSecurity
+#   Linux:   $XDG_DATA_HOME/FikradoSecurity or ~/.local/share/FikradoSecurity
+if sys.platform == "win32":
+    _USER_DATA_ROOT = Path(os.getenv("APPDATA", Path.home() / "AppData" / "Roaming"))
+elif sys.platform == "darwin":
+    _USER_DATA_ROOT = Path.home() / "Library" / "Application Support"
+else:
+    _USER_DATA_ROOT = Path(
+        os.getenv("XDG_DATA_HOME", Path.home() / ".local" / "share")
+    )
+
+APPDATA_BASE = _USER_DATA_ROOT / "FikradoSecurity"
 LOGS_DIR = APPDATA_BASE / "logs"
 QUARANTINE_DIR = APPDATA_BASE / "quarantine"
 DATABASE_DIR = APPDATA_BASE / "database"

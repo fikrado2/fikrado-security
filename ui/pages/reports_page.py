@@ -21,6 +21,7 @@ from config.constants import REPORTS_DIR
 from core.database import db
 from core.reporter import export_pdf_report, generate_html_report
 from core.system_info import audit_system_hardening, get_windows_info
+from core.platforms import open_path
 from scanners.network_scanner import list_active_connections
 from scanners.vuln_scanner import correlate_with_cisa_kev, get_installed_software
 from ui.components.toast import ToastNotification
@@ -144,7 +145,7 @@ class ReportsPage(QWidget):
     def _view_selected_report(self):
         f = self._get_selected_file()
         if f and f.exists():
-            os.startfile(str(f))
+            open_path(str(f))
 
     def _export_selected_pdf(self):
         f = self._get_selected_file()
@@ -153,7 +154,7 @@ class ReportsPage(QWidget):
             pdf_path = export_pdf_report(f)
             if pdf_path and pdf_path.exists():
                 ToastNotification(self.window(), "PDF Ready", f"Exported: {pdf_path.name}", "success")
-                os.startfile(str(pdf_path))
+                open_path(str(pdf_path))
             else:
                 ToastNotification(self.window(), "PDF Notice", "PDF export created. Check reports folder.", "info")
 
@@ -178,10 +179,10 @@ class ReportsPage(QWidget):
         )
         self.refresh_reports_list()
         ToastNotification(self.window(), "Report Generated", f"Saved: {report_path.name}", "success")
-        os.startfile(str(report_path))
+        open_path(str(report_path))
 
     def _open_reports_dir(self):
         try:
-            os.startfile(str(REPORTS_DIR))
+            open_path(str(REPORTS_DIR))
         except Exception as e:
             ToastNotification(self.window(), "Folder Error", str(e), "error")

@@ -1,0 +1,51 @@
+# Backfills prebuilt assets to any release tag.
+# Usage: gh workflow run backfill-assets.yml -f tag=v2.6.87
+# Or: trigger from Actions tab on cross-platform-support branch.
+name: Backfill Release Assets
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to backfill assets into'
+        required: true
+        default: 'v2.6.87'
+        type: string
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Find latest successful Release run
+        id: run
+        run: |
+          RUN_ID=$(gh api repos/${{ github.repository }}/actions/runs \
+            --jq '.workflow_runs |
+                 map(select(.conclusion == "success" and .name == "Release")) |
+                 first | .id')
+          echo "run_id=$RUN_ID"
+          echo "run_id=$RUN_ID" >> $GITHUB_OUTPUT
+
+      - name: Download artifacts from run
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir artifacts
+          gh run download ${{ steps.run.outputs.run_id }} \
+            --repo ${{ github.repository }} \
+            --dir artifacts
+          echo "=== Downloaded ==="
+          find artifacts -type f -exec ls -lh {} \;
+
+      - name: Upload to release ${{ inputs.tag }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ inputs.tag }}" artifacts/* \
+            --repo ${{ github.repository }} \
+            --clobber
+
+      - name: Verify release assets
+        run: |
+          gh release view "${{ inputs.tag }}" --repo ${{ github.repository }} \
+            --json assets --jq '.assets[] | "\(.name) – \(.size | gsub("[0-9]";"") | .[0:4] + " KB")"'

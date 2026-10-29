@@ -13,7 +13,6 @@ startup, caps how many entries it walks, and skips whitelisted paths.
 """
 from __future__ import annotations
 
-import ctypes
 import os
 import sys
 import threading
@@ -27,6 +26,15 @@ from PySide6.QtCore import QObject, Signal
 from config.constants import APPDATA_BASE
 from config.settings import SettingsManager
 from core.logger import logger
+from core.platforms import (
+    IS_MACOS,
+    IS_WINDOWS,
+    all_startup_dirs,
+    is_removable_mount,
+    system_startup_dirs,
+    temp_dir,
+    user_startup_dirs,
+)
 from scanners.malware_scanner import compute_sha256
 from scanners.pe_analyzer import pe_analyzer
 from scanners.yara_engine import yara_engine
@@ -40,7 +48,15 @@ EXECUTABLE_EXTENSIONS = {
     ".exe", ".dll", ".scr", ".com", ".pif", ".cpl", ".msi", ".msp",
     ".bat", ".cmd", ".ps1", ".psm1", ".vbs", ".vbe", ".js", ".jse",
     ".wsf", ".wsh", ".hta", ".jar", ".py", ".pyw", ".lnk",
+    # POSIX script / installer / package formats
+    ".sh", ".run", ".bin", ".appimage", ".command", ".desktop",
+    ".deb", ".rpm", ".pkg", ".dmg", ".app",
 }
+
+# POSIX payloads frequently have no suffix at all (ELF binaries, shell
+# scripts); on those platforms extensionless files are scanned when they carry
+# the executable bit.
+_SCAN_EXTENSIONLESS_EXECUTABLES = not IS_WINDOWS
 
 _SKIP_DIR_NAMES = {
     "node_modules", ".git", ".svn", "__pycache__", "windows", "winsxs",
@@ -53,9 +69,18 @@ _COMMON_LISTEN_PORTS = {
 }
 
 _SYSTEM_PROCESS_NAMES = {
+    # Windows
     "system", "system idle process", "svchost.exe", "services.exe",
     "lsass.exe", "wininit.exe", "winlogon.exe", "spoolsv.exe",
     "smss.exe", "csrss.exe", "dwm.exe", "fontdrvhost.exe",
+    # Linux
+    "systemd", "kthreadd", "ksoftirqd", "rcu_sched", "kworker", "kcompactd0",
+    "dbus-daemon", "gdm-session-worker", "gnome-shell", "Xorg", "Xwayland",
+    "pipewire", "wireplumber", "pulseaudio", "sddm", "lightdm", "sshd",
+    "containerd", "dockerd",
+    # macOS
+    "launchd", "kernel_task", "WindowServer", "loginwindow", "opendirectoryd",
+    "distnoted", "cfprefsd", "powerd", "syslogd", "logd",
 }
 
 _MAX_TRACKED_FILES = 60_000
@@ -167,21 +192,26 @@ class RealtimeGuard(threading.Thread):
 
         if self.settings.get("realtime", "scan_downloads", True):
             paths.append(home / "Downloads")
-            public_downloads = Path(os.getenv("PUBLIC", r"C:\Users\Public")) / "Downloads"
-            paths.append(public_downloads)
+            if IS_WINDOWS:
+                public = os.getenv("PUBLIC")
+                if public:
+                    paths.append(Path(public) / "Downloads")
         if self.settings.get("realtime", "scan_temp", True):
-            temp = os.getenv("TEMP")
-            if temp:
-                paths.append(Path(temp))
+            paths.append(temp_dir())
         if self.settings.get("realtime", "monitor_user_folders", True):
-            for name in ("Desktop", "Documents", "OneDrive\\Desktop", "OneDrive\\Documents"):
+            folder_names = ("Desktop", "Documents")
+            if IS_WINDOWS:
+                # OneDrive keeps redirected copies of the standard user folders.
+                folder_names += ("OneDrive\\Desktop", "OneDrive\\Documents")
+            for name in folder_names:
                 paths.append(home / name)
-            paths.append(Path(os.getenv("PUBLIC", r"C:\Users\Public")))
+            if IS_WINDOWS:
+                public = os.getenv("PUBLIC")
+                if public:
+                    paths.append(Path(public))
         if self.settings.get("realtime", "monitor_startup", True):
-            appdata = Path(os.getenv("APPDATA", home / "AppData" / "Roaming"))
-            paths.append(appdata / "Microsoft" / "Windows" / "Start Menu" / "Programs" / "Startup")
-            programdata = Path(os.getenv("PROGRAMDATA", r"C:\ProgramData"))
-            paths.append(programdata / "Microsoft" / "Windows" / "Start Menu" / "Programs" / "StartUp")
+            paths.extend(user_startup_dirs())
+            paths.extend(system_startup_dirs())
         if self.settings.get("realtime", "monitor_removable", True):
             paths.extend(Path(root) for root in self._removable_roots)
         if self.settings.get("realtime", "monitor_all_drives", False):
@@ -260,13 +290,17 @@ class RealtimeGuard(threading.Thread):
     # ------------------------------------------------------------------ process
     def _check_new_processes(self):
         current_pids: Set[int] = set()
-        for proc in psutil.process_iter(["pid", "name", "exe", "cmdline"]):
+        for proc in psutil.process_iter(["pid", "name", "exe", "cmdline", "ppid"]):
             try:
                 pid = proc.info["pid"]
                 current_pids.add(pid)
                 if pid in self._seen_pids:
                     continue
                 self._seen_pids.add(pid)
+                # Children of this application (clamscan, xdg-open, ...) are
+                # intentional and must not be reported as untrusted launches.
+                if proc.info.get("ppid") == os.getpid():
+                    continue
                 exe = proc.info.get("exe") or ""
                 pname = proc.info.get("name") or ""
                 cmdline = " ".join(proc.info.get("cmdline") or [])[:400]
@@ -276,6 +310,7 @@ class RealtimeGuard(threading.Thread):
                     for marker in (
                         "\\appdata\\local\\temp", "\\windows\\temp", "\\temp\\",
                         "\\downloads\\", "\\public\\", "\\$recycle.bin",
+                        "/tmp/", "/var/tmp/", "/dev/shm/",
                     )
                 )
                 suspicious_cmd = any(
@@ -284,6 +319,7 @@ class RealtimeGuard(threading.Thread):
                         "-enc ", "-encodedcommand", "frombase64string",
                         "downloadstring", "invoke-expression", "iex(",
                         "bitsadmin", "certutil -urlcache", "mshta ",
+                        "base64 -d", "bash -i", "nc -e", "/dev/shm/",
                     )
                 )
                 if suspicious_path or suspicious_cmd:
@@ -343,7 +379,12 @@ class RealtimeGuard(threading.Thread):
                     return
                 try:
                     if item.suffix.lower() not in EXECUTABLE_EXTENSIONS:
-                        continue
+                        if not (
+                            _SCAN_EXTENSIONLESS_EXECUTABLES
+                            and not item.suffix
+                            and os.access(item, os.X_OK)
+                        ):
+                            continue
                     if item.stat().st_size > max_bytes:
                         continue
                     if self.settings.is_whitelisted(file_path=path_str):
@@ -375,46 +416,36 @@ class RealtimeGuard(threading.Thread):
     # ------------------------------------------------------------------ startup
     def _snapshot_startup(self) -> Dict[str, dict]:
         entries: Dict[str, dict] = {}
-        if winreg is None:
-            return entries
 
-        run_keys = (
-            (winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Run"),
-            (winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\RunOnce"),
-            (winreg.HKEY_LOCAL_MACHINE, r"Software\Microsoft\Windows\CurrentVersion\Run"),
-            (winreg.HKEY_LOCAL_MACHINE, r"Software\Microsoft\Windows\CurrentVersion\RunOnce"),
-        )
-        for hive, subkey in run_keys:
-            try:
-                with winreg.OpenKey(hive, subkey) as key:
-                    index = 0
-                    while True:
-                        try:
-                            name, value, _ = winreg.EnumValue(key, index)
-                        except OSError:
-                            break
-                        index += 1
-                        identity = f"registry|{subkey}|{name}"
-                        entries[identity] = {
-                            "name": name,
-                            "command": str(value),
-                            "source": subkey,
-                        }
-            except (OSError, PermissionError):
-                continue
+        if winreg is not None:
+            run_keys = (
+                (winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Run"),
+                (winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\RunOnce"),
+                (winreg.HKEY_LOCAL_MACHINE, r"Software\Microsoft\Windows\CurrentVersion\Run"),
+                (winreg.HKEY_LOCAL_MACHINE, r"Software\Microsoft\Windows\CurrentVersion\RunOnce"),
+            )
+            for hive, subkey in run_keys:
+                try:
+                    with winreg.OpenKey(hive, subkey) as key:
+                        index = 0
+                        while True:
+                            try:
+                                name, value, _ = winreg.EnumValue(key, index)
+                            except OSError:
+                                break
+                            index += 1
+                            identity = f"registry|{subkey}|{name}"
+                            entries[identity] = {
+                                "name": name,
+                                "command": str(value),
+                                "source": subkey,
+                            }
+                except (OSError, PermissionError):
+                    continue
 
-        startup_dirs = []
-        appdata = os.getenv("APPDATA")
-        programdata = os.getenv("PROGRAMDATA")
-        if appdata:
-            startup_dirs.append(
-                Path(appdata) / "Microsoft" / "Windows" / "Start Menu" / "Programs" / "Startup"
-            )
-        if programdata:
-            startup_dirs.append(
-                Path(programdata) / "Microsoft" / "Windows" / "Start Menu" / "Programs" / "StartUp"
-            )
-        for directory in startup_dirs:
+        # Autostart folders exist on every supported platform (Startup folder,
+        # ~/.config/autostart, /etc/xdg/autostart, ~/Library/LaunchAgents).
+        for directory in all_startup_dirs():
             try:
                 for item in directory.iterdir():
                     if item.is_file():
@@ -495,12 +526,13 @@ class RealtimeGuard(threading.Thread):
     # ------------------------------------------------------------------- drives
     @staticmethod
     def _is_removable(root: str) -> bool:
-        if sys.platform == "win32":
+        if IS_WINDOWS:
             try:
+                import ctypes
                 return ctypes.windll.kernel32.GetDriveTypeW(ctypes.c_wchar_p(root)) == 2
             except Exception:
                 return False
-        return False
+        return is_removable_mount(root)
 
     def _check_drives(self):
         partitions = self._local_partitions()

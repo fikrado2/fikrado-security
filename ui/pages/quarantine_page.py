@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
 )
 from config.constants import QUARANTINE_DIR
 from config.settings import SettingsManager
+from core.platforms import open_path
 from core.quarantine import QuarantineManager
 from ui.components.cards import ThreatBadge
 from ui.components.toast import ToastNotification
@@ -170,6 +171,6 @@ class QuarantinePage(QWidget):
 
     def _open_vault_folder(self):
         try:
-            os.startfile(str(QUARANTINE_DIR))
+            open_path(str(QUARANTINE_DIR))
         except Exception as e:
             ToastNotification(self.window(), "Folder Notice", str(e), "warning")

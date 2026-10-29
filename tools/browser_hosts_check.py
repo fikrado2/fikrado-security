@@ -1,6 +1,6 @@
 """
 Fikrado Security - Browser Extension & Hosts File Integrity Checker
-Detects malicious DNS redirects in C:\\Windows\\System32\\drivers\\etc\\hosts
+Detects malicious DNS redirects in the system hosts file
 and high-privilege/suspicious browser extensions.
 """
 import json
@@ -8,15 +8,14 @@ import os
 from pathlib import Path
 from typing import Dict, List, Tuple
 from core.logger import logger
+from core.platforms import (
+    browser_extension_dirs,
+    default_hosts_content,
+    hosts_file_path,
+)
 
-HOSTS_PATH = Path(r"C:\Windows\System32\drivers\etc\hosts")
-DEFAULT_HOSTS_CONTENT = """# Copyright (c) 1993-2009 Microsoft Corp.
-#
-# This is a sample HOSTS file used by Microsoft TCP/IP for Windows.
-#
-127.0.0.1       localhost
-::1             localhost
-"""
+HOSTS_PATH = hosts_file_path()
+DEFAULT_HOSTS_CONTENT = default_hosts_content()
 
 
 class BrowserHostsChecker:
@@ -76,17 +75,46 @@ class BrowserHostsChecker:
         except Exception as e:
             return False, f"Error restoring hosts: {str(e)}"
 
-    def check_browser_extensions(self) -> List[dict]:
+    def _audit_firefox_profile(self, b_name: str, b_path: Path, high_risk_permissions: set) -> List[dict]:
+        """Best-effort Firefox extension audit: reads XPI manifests from profile/extensions dirs."""
+        results = []
+        import zipfile
+        try:
+            for profile_dir in b_path.iterdir():
+                if not profile_dir.is_dir():
+                    continue
+                ext_dir = profile_dir / "extensions"
+                if not ext_dir.exists():
+                    continue
+                for xpi in ext_dir.glob("*.xpi"):
+                    try:
+                        with zipfile.ZipFile(xpi, "r") as zf:
+                            if "manifest.json" in zf.namelist():
+                                with zf.open("manifest.json") as mf:
+                                    mdata = json.load(mf)
+                            else:
+                                continue
+                        name = mdata.get("name", xpi.stem)
+                        version = mdata.get("version", "1.0")
+                        perms = set(mdata.get("permissions", []))
+                        risky_found = list(perms.intersection(high_risk_permissions))
+                        results.append({
+                            "browser": b_name,
+                            "name": name,
+                            "version": version,
+                            "id": xpi.stem,
+                            "risky_permissions": risky_found,
+                            "severity": "High" if len(risky_found) >= 2 else ("Medium" if len(risky_found) == 1 else "Low"),
+                            "path": str(xpi),
+                        })
+                    except Exception:
+                        continue
+        except Exception as e:
+            logger.debug(f"Firefox extension audit notice: {e}")
+        return results
         """Audits Chrome, Edge, and Firefox extensions for high-risk permissions."""
         extensions = []
-        local_appdata = Path(os.getenv("LOCALAPPDATA", ""))
-        appdata = Path(os.getenv("APPDATA", ""))
-
-        browser_dirs = [
-            ("Google Chrome", local_appdata / "Google/Chrome/User Data/Default/Extensions"),
-            ("Microsoft Edge", local_appdata / "Microsoft/Edge/User Data/Default/Extensions"),
-            ("Brave Browser", local_appdata / "BraveSoftware/Brave-Browser/User Data/Default/Extensions"),
-        ]
+        browser_dirs = browser_extension_dirs()
 
         high_risk_permissions = {"<all_urls>", "webRequestBlocking", "debugger", "cookies", "management", "nativeMessaging"}
 
@@ -94,6 +122,9 @@ class BrowserHostsChecker:
             if not b_path.exists():
                 continue
             try:
+                if b_name == "Firefox":
+                    extensions.extend(self._audit_firefox_profile(b_name, b_path, high_risk_permissions))
+                    continue
                 for ext_dir in b_path.iterdir():
                     if ext_dir.is_dir():
                         # Find version subdirectory

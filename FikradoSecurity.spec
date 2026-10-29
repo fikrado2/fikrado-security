@@ -8,7 +8,18 @@ from pathlib import Path
 from PyInstaller.utils.hooks import collect_data_files, collect_submodules
 
 block_cipher = None
+IS_WINDOWS = sys.platform == "win32"
 project_root = Path.cwd()
+
+# Per-OS build settings
+icon_path = str(project_root / 'assets' / 'logo.ico') if IS_WINDOWS else None
+if not IS_WINDOWS:
+    icns_path = str(project_root / 'assets' / 'logo.icns')
+    if (project_root / 'assets' / 'logo.icns').exists():
+        icon_path = icns_path
+    else:
+        # Fallback: no icon on POSIX until .icns is generated
+        icon_path = None
 
 datas = [
     (str(project_root / 'assets'), 'assets'),
@@ -57,6 +68,19 @@ a = Analysis(
 
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
+if IS_WINDOWS:
+    exe_kwargs = {
+        'icon': icon_path,
+        'version': str(project_root / 'version_info.txt') if (project_root / 'version_info.txt').exists() else None,
+        'uac_admin': True,
+    }
+else:
+    exe_kwargs = {
+        'icon': icon_path,
+    }
+
+exe_kwargs['console'] = False
+
 exe = EXE(
     pyz,
     a.scripts,
@@ -71,13 +95,10 @@ exe = EXE(
     upx=True,
     upx_exclude=[],
     runtime_tmpdir=None,
-    console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=str(project_root / 'assets' / 'logo.ico'),
-    version=str(project_root / 'version_info.txt'),
-    uac_admin=True,
+    **{k: v for k, v in exe_kwargs.items() if v is not None},
 )

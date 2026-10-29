@@ -1,0 +1,47 @@
+# Dedicated workflow to backfill assets to an existing release.
+# Trigger manually via: gh workflow run upload-assets.yml -f tag=v2.6.87
+# Or via API with: workflow_dispatch on the v2.6.87 tag commit.
+name: Upload Release Assets
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to upload assets to'
+        required: true
+        default: 'v2.6.87'
+        type: string
+
+env:
+  TARGET_TAG: ${{ inputs.tag }}
+
+jobs:
+  upload-assets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all build artifacts from latest successful run
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Find latest successful Release workflow run
+          RUN_ID=$(gh api repos/${{ github.repository }}/actions/runs \
+            --jq '.workflow_runs[] | select(.conclusion == "success" and .name == "Release") | .id' \
+            | head -1)
+          echo "Using workflow run: $RUN_ID"
+          gh run download "$RUN_ID" --repo ${{ github.repository }} --dir artifacts
+
+      - name: List artifacts
+        run: find artifacts -type f | while read f; do echo "$(du -h "$f" | cut -f1)  $f"; done
+
+      - name: Upload to release ${{ env.TARGET_TAG }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ env.TARGET_TAG }}" artifacts/* \
+            --repo ${{ github.repository }} \
+            --clobber
+          echo "=== Verifying release assets ==="
+          gh release view "${{ env.TARGET_TAG }}" --repo ${{ github.repository }} \
+            --json assets --jq '.assets[].name, .assets[].size'

@@ -115,8 +115,11 @@ def update_cisa_kev_online() -> Tuple[bool, str]:
         return False, f"Network update error: {str(e)}"
 
 
-def run_freshclam(freshclam_path: str = "freshclam.exe") -> Tuple[bool, str]:
+def run_freshclam(freshclam_path: str = None) -> Tuple[bool, str]:
     """Runs ClamAV freshclam to update antivirus definitions."""
+    from core.platforms import default_freshclam_name
+    if not freshclam_path:
+        freshclam_path = default_freshclam_name()
     try:
         res = run_hidden([freshclam_path], capture_output=True, text=True, timeout=60)
         if res.returncode == 0:

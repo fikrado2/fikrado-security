@@ -27,13 +27,15 @@
 
 ## 📥 Download
 
-Grab the latest prebuilt Windows binary from the [Releases page](https://github.com/fikrado2/fikrado-security/releases/latest):
+**Cross-Platform — Windows · Linux · macOS**
 
-1. Download `FikradoSecurity.exe`.
-2. Double-click it and accept the Windows UAC elevation prompt.
-3. No Python installation is required — everything is bundled.
+Grab the latest prebuilt binary from the [Releases page](https://github.com/fikrado2/fikrado-security/releases/latest):
 
-> **Note:** The executable is unsigned, so Windows SmartScreen may show a warning on first launch. Verify the SHA-256 checksum published with each release if you want to confirm the download.
+- **Windows:** `FikradoSecurity.exe` → Double-click and accept the UAC elevation prompt.
+- **Linux:** `Fikrado-Security.AppImage` → `chmod +x Fikrado-Security.AppImage && ./Fikrado-Security.AppImage`
+- **macOS:** `Fikrado-Security.dmg` → Open the DMG, drag to Applications, then **right-click → Open** (first launch only; Apple Gatekeeper requires it for unsigned apps).
+
+> **Note:** All executables are unsigned by default. Windows SmartScreen / macOS Gatekeeper may show a warning. Verify the SHA-256 checksum published with each release if you want to confirm the download.
 
 ---
 
@@ -173,3 +175,27 @@ Integrates 10 dedicated system utilities:
 - Double-click `dist\FikradoSecurity.exe`.
 - Accept the Windows UAC elevation prompt.
 - The application will display the splash screen and launch into the Dark Nord interface.
+
+---
+
+## 🌐 Build from Source (Cross-Platform)
+
+### Linux
+```bash
+pip install -r requirements.txt
+python scripts/build.py linux
+chmod +x Fikrado-Security.AppImage
+./Fikrado-Security.AppImage
+```
+
+### macOS
+```bash
+pip install -r requirements.txt
+python scripts/build.py mac
+# After building, open the DMG. On first launch, right-click → Open to bypass Gatekeeper.
+```
+
+### All Platforms
+- The `.spec` file (`FikradoSecurity.spec`) is platform-aware: `icon`, `version`, and `uac_admin` are only applied on Windows; `.icns` and `.dmg` packaging are used on macOS; Linux uses the AppImage (`AppImageBuilder` / `linuxdeploy`) approach.
+- The `.desktop` file (`assets/fikrado-security.desktop`) is packaged with Linux builds.
+- The build script (`scripts/build.py`) detects OS automatically and selects the correct build mode (`win` / `linux` / `mac`).

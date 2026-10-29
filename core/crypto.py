@@ -28,11 +28,16 @@ except ImportError:
 
 def _get_machine_entropy() -> bytes:
     """Derives a stable machine-specific entropy key."""
-    seed = (
-        platform.node() +
-        os.getenv("COMPUTERNAME", "") +
-        os.getenv("PROCESSOR_IDENTIFIER", "FikradoSecurityMachineKey")
-    ).encode("utf-8")
+    # Env fallbacks only apply where the Windows variables are absent, so the
+    # derived key on Windows (and therefore stored secrets) is unchanged.
+    computer_name = os.getenv("COMPUTERNAME") or os.getenv("HOSTNAME") or platform.node()
+    processor = (
+        os.getenv("PROCESSOR_IDENTIFIER")
+        or os.getenv("PROCESSOR_ARCHITECTURE")
+        or platform.machine()
+        or "FikradoSecurityMachineKey"
+    )
+    seed = (platform.node() + computer_name + processor).encode("utf-8")
     if HAS_AES:
         kdf = PBKDF2HMAC(
             algorithm=hashes.SHA256(),

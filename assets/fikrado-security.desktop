@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=Fikrado Security
+Comment=Cross-Platform Security Scanner & Hardening Tool
+Exec=env DESKTOPINTEGRATION=yes ./Fikrado-Security.AppImage %U
+Icon=/usr/share/pixmaps/fikrado-security.png
+Terminal=false
+Type=Application
+Categories=Security;System;
+StartupNotify=true
+Keywords=security;scan;firewall;hardening;

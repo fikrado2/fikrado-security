@@ -72,6 +72,8 @@ class FikradoMainWindow(QMainWindow):
             8: "Quarantine Vault",
             9: "Audit Reports",
             10: "Settings",
+            11: "Terminal",
+            12: "Bootkit & Rootkit Scan",
         }
         self._page_factories = {
             0: self._create_dashboard_page,
@@ -85,6 +87,8 @@ class FikradoMainWindow(QMainWindow):
             8: self._create_quarantine_page,
             9: self._create_reports_page,
             10: self._create_settings_page,
+            11: self._create_terminal_page,
+            12: self._create_threat_scan_page,
         }
         self.tray_icon: QSystemTrayIcon | None = None
         self._tray_menu: QMenu | None = None
@@ -166,6 +170,14 @@ class FikradoMainWindow(QMainWindow):
     def _create_settings_page(self):
         from ui.pages.settings_page import SettingsPage
         return SettingsPage(self)
+
+    def _create_terminal_page(self):
+        from ui.pages.terminal_page import TerminalPage
+        return TerminalPage(self)
+
+    def _create_threat_scan_page(self):
+        from ui.pages.threat_scan_page import ThreatScanPage
+        return ThreatScanPage(self)
 
     def _create_page(self, index: int) -> QWidget | None:
         factory = self._page_factories.get(index)
@@ -264,6 +276,8 @@ class FikradoMainWindow(QMainWindow):
             ("Security Tools", "tools", 7),
             ("Quarantine", "quarantine", 8),
             ("Audit Reports", "reports", 9),
+            ("Terminal", "terminal", 11),
+            ("Bootkit & Rootkit", "threat_scan", 12),
             ("Settings", "settings", 10),
         ]
 
@@ -474,7 +488,16 @@ class FikradoMainWindow(QMainWindow):
             if pending is not None and pending != index:
                 QTimer.singleShot(0, lambda: self.navigate_to_page(pending))
 
-    def _on_ai_explain_requested(self, threat: dict):
+    def _open_close_apps_page(self):
+        page = self._pages.get(11)
+        if page is not None:
+            self._activate_page(11, page)
+            return
+        self._navigating = True
+        if 11 in self.nav_buttons:
+            self.nav_buttons[11].setChecked(True)
+        self.loading_overlay.show_message("Preparing process manager…")
+        QTimer.singleShot(16, lambda: self._finish_page_creation(11))
         self._pending_ai_threat = threat
         page = self._pages.get(6)
         if page is not None:

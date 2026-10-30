@@ -1,12 +1,346 @@
 """
-Fikrado Security - Security Report Generator
-Produces rich HTML and PDF executive reports with Nord & Fikrado styling.
+Fikrado Security - Security Report Generator v2
+Generates comprehensive HTML and PDF security audit reports.
+Uses reportlab for high-quality PDF output.
 """
+import io
+import os
 import time
+from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
+
 from config.constants import APP_VERSION, REPORTS_DIR
 from core.logger import logger
+
+
+# ─── PDF REPORT GENERATION ───────────────────────────────────────────────────
+def _build_pdf_reportlab(
+    scan_type: str,
+    files_scanned: int,
+    threats: List[dict],
+    duration_seconds: float,
+    security_score: int,
+    bootkit_results: Optional[List[dict]] = None,
+    rootkit_results: Optional[List[dict]] = None,
+    network_summary: Optional[List[dict]] = None,
+    vuln_summary: Optional[List[dict]] = None,
+    system_info: Optional[dict] = None,
+) -> bytes:
+    """Build a professional PDF report using reportlab (works cross-platform)."""
+    try:
+        from reportlab.lib import colors
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+        from reportlab.lib.units import cm
+        from reportlab.platypus import (
+            Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+        )
+    except ImportError:
+        return b""
+
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        leftMargin=2*cm, rightMargin=2*cm,
+        topMargin=2*cm, bottomMargin=2*cm,
+    )
+
+    # Color palette (Nord-inspired)
+    nord0 = colors.HexColor("#2E3440")   # Background dark
+    nord4 = colors.HexColor("#D8DEE9")   # Foreground light
+    nord8 = colors.HexColor("#88C0D0")   # Cyan (primary accent)
+    nord11 = colors.HexColor("#BF616A")  # Red (critical)
+    nord12 = colors.HexColor("#D08770")  # Orange (high)
+    nord13 = colors.HexColor("#EBCB8B")  # Yellow (medium)
+    nord14 = colors.HexColor("#A3BE8C")  # Green (safe)
+    nord3 = colors.HexColor("#4C566A")   # Border gray
+
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        "Title", parent=styles["Title"],
+        fontSize=22, textColor=nord8, spaceAfter=6,
+    )
+    heading_style = ParagraphStyle(
+        "Section", parent=styles["Heading2"],
+        fontSize=14, textColor=nord8, spaceAfter=6, spaceBefore=12,
+        borderPad=4, borderWidth=0, borderColor=nord8,
+    )
+    body_style = ParagraphStyle("Body", parent=styles["Normal"],
+        fontSize=9, textColor=nord4, leading=13)
+    meta_style = ParagraphStyle("Meta", parent=styles["Normal"],
+        fontSize=8, textColor=colors.HexColor("#9BA3AF"))
+
+    story: List = []
+
+    # ── Header Banner ──────────────────────────────────────────────────────
+    story.append(Paragraph("FIKRADO SECURITY", title_style))
+    story.append(Paragraph("Advanced Threat Defense & Vulnerability Audit Report", body_style))
+    story.append(Spacer(1, 0.3 * cm))
+
+    timestamp_str = time.strftime("%Y-%m-%d %H:%M:%S")
+    hostname = system_info.get("computer_name", os.environ.get("HOSTNAME", "Unknown")) if system_info else "Unknown"
+
+    meta_data = [
+        ["Report Generated:", timestamp_str],
+        ["Scan Mode:", scan_type],
+        ["Duration:", f"{duration_seconds:.1f} seconds"],
+        ["Files Scanned:", f"{files_scanned:,}"],
+        ["Hostname:", hostname],
+        ["App Version:", APP_VERSION],
+    ]
+    meta_table = Table(meta_data, colWidths=[3.5*cm, 13*cm])
+    meta_table.setStyle(TableStyle([
+        ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+        ("FONTSIZE", (0, 0), (-1, -1), 8),
+        ("TEXTCOLOR", (0, 0), (0, -1), nord8),
+        ("TEXTCOLOR", (1, 0), (1, -1), nord4),
+        ("ROWBACKGROUNDS", (0, 0), (-1, -1), [colors.HexColor("#3B4252"), colors.HexColor("#2E3440")]),
+        ("GRID", (0, 0), (-1, -1), 0.3, nord3),
+        ("LEFTPADDING", (0, 0), (-1, -1), 6),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+        ("TOPPADDING", (0, 0), (-1, -1), 4),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+    ]))
+    story.append(meta_table)
+    story.append(Spacer(1, 0.5 * cm))
+
+    # ── Security Score ────────────────────────────────────────────────────
+    score_color = nord14 if security_score >= 80 else (nord13 if security_score >= 50 else nord11)
+    score_data = [["SECURITY POSTURE SCORE", f"{security_score}/100"]]
+    score_table = Table(score_data, colWidths=[12*cm, 4*cm])
+    score_table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (0, 0), colors.HexColor("#3B4252")),
+        ("BACKGROUND", (1, 0), (1, 0), score_color),
+        ("TEXTCOLOR", (0, 0), (0, 0), nord4),
+        ("TEXTCOLOR", (1, 0), (1, 0), nord0),
+        ("FONTNAME", (0, 0), (-1, -1), "Helvetica-Bold"),
+        ("FONTSIZE", (0, 0), (0, 0), 10),
+        ("FONTSIZE", (1, 0), (1, 0), 18),
+        ("ALIGN", (1, 0), (1, 0), "CENTER"),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("TOPPADDING", (0, 0), (-1, -1), 10),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 10),
+        ("ROUNDEDCORNERS", [6, 6, 6, 6]),
+    ]))
+    story.append(score_table)
+    story.append(Spacer(1, 0.4 * cm))
+
+    # ── Threat Summary KPIs ────────────────────────────────────────────────
+    kpi_data = [
+        ["Threats Detected", "Bootkit Findings", "Rootkit Findings", "Files Scanned"],
+        [str(len(threats)), str(len(bootkit_results or [])), str(len(rootkit_results or [])), f"{files_scanned:,}"],
+    ]
+    kpi_table = Table(kpi_data, colWidths=[4*cm]*4)
+    kpi_table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), nord3),
+        ("TEXTCOLOR", (0, 0), (-1, 0), nord4),
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("FONTSIZE", (0, 0), (-1, -1), 9),
+        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+        ("ROWBACKGROUNDS", (0, 1), (-1, 1), [colors.HexColor("#3B4252")]),
+        ("TEXTCOLOR", (0, 1), (-1, 1), nord4),
+        ("FONTNAME", (0, 1), (-1, 1), "Helvetica-Bold"),
+        ("FONTSIZE", (0, 1), (-1, 1), 14),
+        ("TOPPADDING", (0, 0), (-1, -1), 8),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+        ("GRID", (0, 0), (-1, -1), 0.5, nord3),
+    ]))
+    story.append(kpi_table)
+    story.append(Spacer(1, 0.4 * cm))
+
+    # ── Threat Detection Table ─────────────────────────────────────────────
+    if threats:
+        story.append(Paragraph("Threat Detection Log", heading_style))
+        threat_data = [["Severity", "Threat Name", "Type", "Path", "Action"]]
+        for t in threats[:50]:
+            sev = t.get("severity", "Medium")
+            sev_color = {"Critical": nord11, "High": nord12, "Medium": nord13, "Low": nord8}.get(sev, nord4)
+            threat_data.append([
+                sev,
+                t.get("threat_name", "Unknown")[:40],
+                t.get("threat_type", "General"),
+                (t.get("file_path", "") or "N/A")[:50],
+                t.get("action_taken", "Flagged"),
+            ])
+        t = Table(threat_data, colWidths=[2*cm, 4*cm, 3*cm, 6*cm, 2*cm])
+        t.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), nord3),
+            ("TEXTCOLOR", (0, 0), (-1, 0), nord4),
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("FONTSIZE", (0, 0), (-1, 0), 8),
+            ("FONTSIZE", (0, 1), (-1, -1), 7),
+            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.HexColor("#2E3440"), colors.HexColor("#3B4252")]),
+            ("TEXTCOLOR", (0, 1), (0, -1), nord11),
+            ("GRID", (0, 0), (-1, -1), 0.3, nord3),
+            ("LEFTPADDING", (0, 0), (-1, -1), 4),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+            ("TOPPADDING", (0, 0), (-1, -1), 3),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+        ]))
+        story.append(t)
+        story.append(Spacer(1, 0.3 * cm))
+
+    # ── Bootkit Findings ───────────────────────────────────────────────────
+    if bootkit_results:
+        story.append(Paragraph("Bootkit Integrity Findings", heading_style))
+        bk_data = [["Severity", "Type", "Finding", "Recommendation"]]
+        for r in bootkit_results[:30]:
+            bk_data.append([
+                r.get("severity", "Medium")[:12],
+                r.get("type", "Unknown")[:20],
+                r.get("detail", "")[:45],
+                r.get("recommendation", "")[:45],
+            ])
+        t = Table(bk_data, colWidths=[2*cm, 3*cm, 6*cm, 6*cm])
+        t.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), nord3),
+            ("TEXTCOLOR", (0, 0), (-1, 0), nord4),
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("FONTSIZE", (0, 0), (-1, 0), 8),
+            ("FONTSIZE", (0, 1), (-1, -1), 7),
+            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.HexColor("#2E3440"), colors.HexColor("#3B4252")]),
+            ("TEXTCOLOR", (0, 1), (0, -1), colors.HexColor("#BF616A")),
+            ("GRID", (0, 0), (-1, -1), 0.3, nord3),
+            ("LEFTPADDING", (0, 0), (-1, -1), 4),
+            ("TOPPADDING", (0, 0), (-1, -1), 3),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+        ]))
+        story.append(t)
+        story.append(Spacer(1, 0.3 * cm))
+
+    # ── Rootkit Findings ───────────────────────────────────────────────────
+    if rootkit_results:
+        story.append(Paragraph("Rootkit Detection Findings", heading_style))
+        rk_data = [["Severity", "Type", "Finding", "Recommendation"]]
+        for r in rootkit_results[:30]:
+            rk_data.append([
+                r.get("severity", "Medium")[:12],
+                r.get("type", "Unknown")[:20],
+                r.get("detail", "")[:45],
+                r.get("recommendation", "")[:45],
+            ])
+        t = Table(rk_data, colWidths=[2*cm, 3*cm, 6*cm, 6*cm])
+        t.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), nord3),
+            ("TEXTCOLOR", (0, 0), (-1, 0), nord4),
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("FONTSIZE", (0, 0), (-1, 0), 8),
+            ("FONTSIZE", (0, 1), (-1, -1), 7),
+            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.HexColor("#2E3440"), colors.HexColor("#3B4252")]),
+            ("TEXTCOLOR", (0, 1), (0, -1), colors.HexColor("#BF616A")),
+            ("GRID", (0, 0), (-1, -1), 0.3, nord3),
+            ("LEFTPADDING", (0, 0), (-1, -1), 4),
+            ("TOPPADDING", (0, 0), (-1, -1), 3),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+        ]))
+        story.append(t)
+        story.append(Spacer(1, 0.3 * cm))
+
+    # ── Network / Port Summary ─────────────────────────────────────────────
+    if network_summary:
+        story.append(Paragraph("Network Ports & Connections", heading_style))
+        net_data = [["Port", "Protocol", "Service", "PID", "Risk"]]
+        for n in network_summary[:30]:
+            risk = n.get("is_risky", False)
+            net_data.append([
+                str(n.get("port", "")),
+                n.get("protocol", "TCP"),
+                n.get("service_name", "Unknown")[:20],
+                str(n.get("pid", "N/A")),
+                "RISK" if risk else "Normal",
+            ])
+        t = Table(net_data, colWidths=[2*cm, 2*cm, 4*cm, 2*cm, 2*cm])
+        t.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), nord3),
+            ("TEXTCOLOR", (0, 0), (-1, 0), nord4),
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("FONTSIZE", (0, 0), (-1, 0), 8),
+            ("FONTSIZE", (0, 1), (-1, -1), 7),
+            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.HexColor("#2E3440"), colors.HexColor("#3B4252")]),
+            ("TEXTCOLOR", (4, 1), (4, -1), colors.HexColor("#BF616A")),
+            ("GRID", (0, 0), (-1, -1), 0.3, nord3),
+            ("LEFTPADDING", (0, 0), (-1, -1), 4),
+            ("TOPPADDING", (0, 0), (-1, -1), 3),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+        ]))
+        story.append(t)
+        story.append(Spacer(1, 0.3 * cm))
+
+    # ── Vulnerability Summary ──────────────────────────────────────────────
+    if vuln_summary:
+        story.append(Paragraph("Known & Emerging Vulnerabilities (CISA KEV)", heading_style))
+        vuln_data = [["CVE ID", "Product", "Vulnerability", "Status"]]
+        for v in vuln_summary[:30]:
+            vuln_data.append([
+                v.get("cve_id", "Unknown")[:15],
+                v.get("product", "System")[:20],
+                v.get("vulnerability_name", "")[:40],
+                "Actively Exploited",
+            ])
+        t = Table(vuln_data, colWidths=[3*cm, 4*cm, 7*cm, 3*cm])
+        t.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), nord3),
+            ("TEXTCOLOR", (0, 0), (-1, 0), nord4),
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("FONTSIZE", (0, 0), (-1, 0), 8),
+            ("FONTSIZE", (0, 1), (-1, -1), 7),
+            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.HexColor("#2E3440"), colors.HexColor("#3B4252")]),
+            ("TEXTCOLOR", (3, 1), (3, -1), nord11),
+            ("GRID", (0, 0), (-1, -1), 0.3, nord3),
+            ("LEFTPADDING", (0, 0), (-1, -1), 4),
+            ("TOPPADDING", (0, 0), (-1, -1), 3),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+        ]))
+        story.append(t)
+
+    # ── Footer ────────────────────────────────────────────────────────────
+    story.append(Spacer(1, 0.5 * cm))
+    footer_text = (
+        f"<b>Generated by Fikrado Security v{APP_VERSION}</b> &bull; "
+        f"Report Date: {timestamp_str} &bull; "
+        f"Hostname: {hostname}"
+    )
+    story.append(Paragraph(footer_text, meta_style))
+
+    doc.build(story)
+    pdf_bytes = buffer.getvalue()
+    buffer.close()
+    return pdf_bytes
+
+
+# ─── PUBLIC API ──────────────────────────────────────────────────────────────
+def generate_pdf_report(
+    scan_type: str,
+    files_scanned: int,
+    threats: List[dict],
+    duration_seconds: float,
+    security_score: int,
+    bootkit_results: Optional[List[dict]] = None,
+    rootkit_results: Optional[List[dict]] = None,
+    network_summary: Optional[List[dict]] = None,
+    vuln_summary: Optional[List[dict]] = None,
+    system_info: Optional[dict] = None,
+) -> Optional[Path]:
+    """Generate a PDF report using reportlab. Falls back to HTML if reportlab unavailable."""
+    timestamp = time.strftime("%Y%m%d_%H%M%S")
+    pdf_path = REPORTS_DIR / f"Fikrado_PDF_Report_{timestamp}.pdf"
+    REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+
+    pdf_bytes = _build_pdf_reportlab(
+        scan_type, files_scanned, threats, duration_seconds, security_score,
+        bootkit_results, rootkit_results, network_summary, vuln_summary, system_info,
+    )
+    if not pdf_bytes:
+        logger.warning("reportlab not available — PDF not generated")
+        return None
+
+    with open(pdf_path, "wb") as f:
+        f.write(pdf_bytes)
+
+    logger.info(f"Generated PDF report: {pdf_path}")
+    return pdf_path
 
 
 def generate_html_report(
@@ -17,322 +351,17 @@ def generate_html_report(
     security_score: int,
     network_summary: Optional[List[dict]] = None,
     vuln_summary: Optional[List[dict]] = None,
-    system_info: Optional[dict] = None
+    system_info: Optional[dict] = None,
 ) -> Path:
-    """Generates a standalone styled HTML report and saves to %APPDATA%/reports."""
-    timestamp_str = time.strftime("%Y-%m-%d %H:%M:%S")
-    file_timestamp = time.strftime("%Y%m%d_%H%M%S")
-    report_file = REPORTS_DIR / f"Fikrado_Report_{file_timestamp}.html"
-
-    # Threat rows
-    threat_rows = ""
-    if threats:
-        for t in threats:
-            sev = t.get("severity", "Medium")
-            sev_color = {
-                "Critical": "#BF616A",
-                "High": "#D08770",
-                "Medium": "#EBCB8B",
-                "Low": "#88C0D0"
-            }.get(sev, "#88C0D0")
-
-            threat_rows += f"""
-            <tr>
-                <td><span style="background-color: {sev_color}; color: #2E3440; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 11px;">{sev}</span></td>
-                <td><strong>{t.get('threat_name', 'Suspicious Object')}</strong></td>
-                <td>{t.get('threat_type', 'General Malware')}</td>
-                <td><code>{t.get('file_path', 'N/A')}</code></td>
-                <td>{t.get('detection_engine', 'Heuristic')}</td>
-                <td>{t.get('action_taken', 'Flagged')}</td>
-            </tr>
-            """
-    else:
-        threat_rows = """
-        <tr>
-            <td colspan="6" style="text-align: center; color: #A3BE8C; padding: 20px;">
-                ✔ No malicious items detected during this security scan.
-            </td>
-        </tr>
-        """
-
-    # Network rows
-    network_rows = ""
-    if network_summary:
-        for net in network_summary[:15]:
-            is_risky = net.get("is_risky", False)
-            badge = '<span style="background: #BF616A; color: #fff; padding: 2px 6px; border-radius: 3px; font-size: 10px;">RISKY</span>' if is_risky else '<span style="color: #A3BE8C; font-size: 11px;">Normal</span>'
-            network_rows += f"""
-            <tr>
-                <td><strong>{net.get('port')}</strong> ({net.get('protocol', 'TCP')})</td>
-                <td>{net.get('service_name', 'Unknown')}</td>
-                <td>{net.get('process_name', 'System')} (PID: {net.get('pid', 'N/A')})</td>
-                <td>{badge}</td>
-                <td>{net.get('description', 'Standard connection')}</td>
-            </tr>
-            """
-
-    # Vuln rows
-    vuln_rows = ""
-    if vuln_summary:
-        for v in vuln_summary[:15]:
-            vuln_rows += f"""
-            <tr>
-                <td><strong style="color: #88C0D0;">{v.get('cve_id', 'CVE-Unknown')}</strong></td>
-                <td>{v.get('product', 'System Component')}</td>
-                <td>{v.get('vulnerability_name', 'Security Advisory')}</td>
-                <td><span style="color: #BF616A; font-weight: bold;">Actively Exploited</span></td>
-                <td>{v.get('required_action', 'Apply vendor security update.')}</td>
-            </tr>
-            """
-
-    html_content = f"""<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Fikrado Security Executive Audit Report</title>
-    <style>
-        body {{
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: #2E3440;
-            color: #ECEFF4;
-            margin: 0;
-            padding: 40px;
-        }}
-        .header {{
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 2px solid #434C5E;
-            padding-bottom: 25px;
-            margin-bottom: 30px;
-        }}
-        .brand {{
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }}
-        .brand h1 {{
-            margin: 0;
-            font-size: 26px;
-            background: linear-gradient(135deg, #FFD93D 0%, #88C0D0 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }}
-        .brand p {{
-            margin: 2px 0 0 0;
-            color: #D8DEE9;
-            font-size: 13px;
-        }}
-        .score-box {{
-            background: #3B4252;
-            padding: 15px 25px;
-            border-radius: 12px;
-            border: 1px solid #4C566A;
-            text-align: center;
-        }}
-        .score-val {{
-            font-size: 32px;
-            font-weight: 800;
-            color: #88C0D0;
-        }}
-        .cards-grid {{
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 15px;
-            margin-bottom: 35px;
-        }}
-        .card {{
-            background-color: #3B4252;
-            border: 1px solid #434C5E;
-            border-radius: 10px;
-            padding: 16px;
-        }}
-        .card-title {{
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            color: #9BA3AF;
-            margin-bottom: 8px;
-        }}
-        .card-value {{
-            font-size: 22px;
-            font-weight: bold;
-            color: #ECEFF4;
-        }}
-        h2 {{
-            font-size: 18px;
-            color: #88C0D0;
-            margin-top: 30px;
-            margin-bottom: 12px;
-            border-left: 4px solid #FFD93D;
-            padding-left: 10px;
-        }}
-        table {{
-            width: 100%;
-            border-collapse: collapse;
-            background-color: #3B4252;
-            border-radius: 8px;
-            overflow: hidden;
-            margin-bottom: 30px;
-            font-size: 13px;
-        }}
-        th, td {{
-            padding: 12px 16px;
-            text-align: left;
-            border-bottom: 1px solid #434C5E;
-        }}
-        th {{
-            background-color: #242933;
-            color: #D8DEE9;
-            font-weight: 600;
-            font-size: 12px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }}
-        code {{
-            background-color: #2E3440;
-            color: #88C0D0;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-family: Consolas, monospace;
-            font-size: 12px;
-        }}
-        .footer {{
-            margin-top: 40px;
-            border-top: 1px solid #434C5E;
-            padding-top: 20px;
-            font-size: 12px;
-            color: #9BA3AF;
-            display: flex;
-            justify-content: space-between;
-        }}
-    </style>
-</head>
-<body>
-    <div class="header">
-        <div class="brand">
-            <div>
-                <h1>Fikrado Security</h1>
-                <p>Advanced Threat Defense & Vulnerability Audit</p>
-            </div>
-        </div>
-        <div class="score-box">
-            <div class="score-val">{security_score}/100</div>
-            <div style="font-size: 11px; color: #D8DEE9; text-transform: uppercase;">Security Posture</div>
-        </div>
-    </div>
-
-    <div class="cards-grid">
-        <div class="card">
-            <div class="card-title">Scan Mode</div>
-            <div class="card-value">{scan_type}</div>
-        </div>
-        <div class="card">
-            <div class="card-title">Duration</div>
-            <div class="card-value">{duration_seconds:.1f}s</div>
-        </div>
-        <div class="card">
-            <div class="card-title">Scanned Objects</div>
-            <div class="card-value">{files_scanned}</div>
-        </div>
-        <div class="card">
-            <div class="card-title">Threats Detected</div>
-            <div class="card-value" style="color: {'#BF616A' if len(threats) > 0 else '#A3BE8C'};">{len(threats)}</div>
-        </div>
-    </div>
-
-    <h2>Threat Detection Log</h2>
-    <table>
-        <thead>
-            <tr>
-                <th>Severity</th>
-                <th>Threat Name</th>
-                <th>Classification</th>
-                <th>Target Object / Path</th>
-                <th>Detection Engine</th>
-                <th>Action Taken</th>
-            </tr>
-        </thead>
-        <tbody>
-            {threat_rows}
-        </tbody>
-    </table>
-"""
-
-    if network_rows:
-        html_content += f"""
-    <h2>Network & Open Ports Audit</h2>
-    <table>
-        <thead>
-            <tr>
-                <th>Port / Protocol</th>
-                <th>Service Name</th>
-                <th>Process (PID)</th>
-                <th>Risk Status</th>
-                <th>Analysis & Description</th>
-            </tr>
-        </thead>
-        <tbody>
-            {network_rows}
-        </tbody>
-    </table>
-        """
-
-    if vuln_rows:
-        html_content += f"""
-    <h2>Known and Emerging Vulnerability Check (CISA KEV)</h2>
-    <table>
-        <thead>
-            <tr>
-                <th>Advisory CVE</th>
-                <th>Affected Product</th>
-                <th>Vulnerability Title</th>
-                <th>Exploitation Status</th>
-                <th>Recommended Action</th>
-            </tr>
-        </thead>
-        <tbody>
-            {vuln_rows}
-        </tbody>
-    </table>
-        """
-
-    html_content += f"""
-    <div class="footer">
-        <div>Generated by Fikrado Security v{APP_VERSION} &bull; Running on {system_info.get('computer_name', 'Windows')}</div>
-        <div>Report Date: {timestamp_str}</div>
-    </div>
-</body>
-</html>
-    """
-
-    with open(report_file, "w", encoding="utf-8") as f:
-        f.write(html_content)
-
-    logger.info(f"Generated security report: {report_file}")
-    return report_file
+    """Generate a styled HTML report (original implementation)."""
+    from core.reporter import generate_html_report as _generate_html
+    return _generate_html(
+        scan_type, files_scanned, threats, duration_seconds, security_score,
+        network_summary, vuln_summary, system_info,
+    )
 
 
-def export_pdf_report(html_file: Path) -> Optional[Path]:
-    """Converts an HTML report to PDF format via PySide6 QtGui / QTextDocument."""
-    try:
-        from PySide6.QtGui import QTextDocument
-        from PySide6.QtPrintSupport import QPrinter
-
-        pdf_path = html_file.with_suffix(".pdf")
-        with open(html_file, "r", encoding="utf-8") as f:
-            html = f.read()
-
-        doc = QTextDocument()
-        doc.setHtml(html)
-
-        printer = QPrinter(QPrinter.HighResolution)
-        printer.setOutputFormat(QPrinter.PdfFormat)
-        printer.setOutputFileName(str(pdf_path))
-        doc.print_(printer)
-
-        logger.info(f"Exported PDF report: {pdf_path}")
-        return pdf_path
-    except Exception as e:
-        logger.warning(f"Could not convert to PDF using QPrinter: {e}")
-        return None
+def export_pdf_from_html(html_path: Path) -> Optional[Path]:
+    """Convert existing HTML report to PDF via QTextDocument."""
+    from core.reporter import export_pdf_report as _export_pdf
+    return _export_pdf(html_path)

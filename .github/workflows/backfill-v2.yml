@@ -72,14 +72,14 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "Uploading to release: v${{ inputs.tag }}"
-          gh release upload "v${{ inputs.tag }}" artifacts/* \
+          echo "Uploading to release: ${{ inputs.tag }}"
+          gh release upload "${{ inputs.tag }}" artifacts/* \
             --repo ${{ github.repository }} --clobber
 
       - name: Verify release assets
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "=== v${{ inputs.tag }} release assets ==="
-          gh release view "v${{ inputs.tag }}" --repo ${{ github.repository }} \
+          echo "=== ${{ inputs.tag }} release assets ==="
+          gh release view "${{ inputs.tag }}" --repo ${{ github.repository }} \
             --json assets --jq '.assets[] | "  \(.name) (\(.size | gsub("[0-9]";"") | .[0:4] + " KB"))"'

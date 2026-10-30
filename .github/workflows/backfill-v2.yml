@@ -1,0 +1,81 @@
+# Backfill Release Assets v2 — uses curl (no GH_TOKEN required for download)
+# Finds the latest successful Release workflow run and uploads all built artifacts
+# to any specified release tag. Trigger: gh workflow run backfill-v2.yml -f tag=v2.6.87
+name: Backfill Release Assets v2
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to backfill assets into'
+        required: true
+        default: 'v2.6.87'
+        type: string
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Find latest successful Release run
+        id: run-info
+        run: |
+          RUN_ID=$(gh api repos/${{ github.repository }}/actions/runs \
+            --jq '.workflow_runs |
+                 map(select(.conclusion == "success" and .name == "Release")) |
+                 first | .id')
+          echo "release_run_id=$RUN_ID" >> $GITHUB_OUTPUT
+          echo "Using Release run ID: $RUN_ID"
+
+      - name: Get artifact IDs and download URLs
+        id: artifact-info
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p artifacts
+
+          echo "Fetching artifact list from run ${{ steps.run-info.outputs.release_run_id }}..."
+          # Save artifact list to a JSON file for parsing
+          gh api repos/${{ github.repository }}/actions/runs/${{ steps.run-info.outputs.release_run_id }}/artifacts \
+            --jq '.artifacts[] | "\(.id)|\(.name)"' > artifacts/list.txt
+
+          echo "Found $(wc -l < artifacts/list.txt) artifact(s)"
+          cat artifacts/list.txt
+
+      - name: Download all artifacts via curl
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          while IFS='|' read -r id name; do
+            echo "=== Downloading $name (id=$id) ==="
+            # Get the signed download URL for this artifact
+            download_url=$(gh api repos/${{ github.repository }}/actions/artifacts/$id \
+              --jq '.archive_download_url')
+
+            # Download directly with curl (respects GITHUB_TOKEN env var)
+            curl -sL -o "artifacts/$name" \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              "$download_url"
+
+            size=$(du -h "artifacts/$name" | cut -f1)
+            echo "Downloaded: $size → artifacts/$name"
+          done < artifacts/list.txt
+
+          echo "=== All artifacts downloaded ==="
+          ls -lh artifacts/
+
+      - name: Upload to release ${{ inputs.tag }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Uploading to release: v${{ inputs.tag }}"
+          gh release upload "v${{ inputs.tag }}" artifacts/* \
+            --repo ${{ github.repository }} --clobber
+
+      - name: Verify release assets
+        run: |
+          echo "=== v${{ inputs.tag }} release assets ==="
+          gh release view "v${{ inputs.tag }}" --repo ${{ github.repository }} \
+            --json assets --jq '.assets[] | "  \(.name) (\(.size | gsub("[0-9]";"") | .[0:4] + " KB"))"'

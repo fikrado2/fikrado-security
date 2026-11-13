@@ -12,6 +12,8 @@ ENV/
 # Build artifacts
 build/
 dist/
+target/
+*.WebView2/
 *.manifest
 
 # Runtime data, logs and local databases

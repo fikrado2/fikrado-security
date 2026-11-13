@@ -1,3 +1,5 @@
+import sys
+sys.path.append(r'C:\Users\yahye\AppData\Roaming\Python\Python314\site-packages')
 """
 Fikrado Security - Main Application Entrypoint
 Initializes Qt runtime, loads custom QSS theme, presents splash screen,

@@ -512,6 +512,13 @@ class FikradoMainWindow(QMainWindow):
         super().showEvent(event)
         if not self._native_chrome_applied:
             self._native_chrome_applied = True
+            # Center the window on screen
+            screen = QApplication.primaryScreen()
+            if screen:
+                screen_geo = screen.availableGeometry()
+                x = screen_geo.x() + (screen_geo.width() - self.width()) // 2
+                y = screen_geo.y() + (screen_geo.height() - self.height()) // 2
+                self.move(x, y)
             QTimer.singleShot(0, lambda: apply_window_effects(self))
 
     def closeEvent(self, event):

@@ -131,6 +131,15 @@ class FikradoSplashScreen(QSplashScreen):
         if getattr(self, "_fade_started", False):
             return
         self._fade_started = True
+        
+        # Center on screen
+        screen = self.screen()
+        if screen:
+            screen_geo = screen.availableGeometry()
+            x = screen_geo.x() + (screen_geo.width() - self.width()) // 2
+            y = screen_geo.y() + (screen_geo.height() - self.height()) // 2
+            self.move(x, y)
+        
         self.setWindowOpacity(0.0)
         self._fade_anim = QPropertyAnimation(self, b"windowOpacity", self)
         self._fade_anim.setDuration(320)

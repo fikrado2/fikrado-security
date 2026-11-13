@@ -1,201 +1,150 @@
-# Fikrado Security - Enterprise Windows Threat Defense Platform
+# Fikrado Security · Enterprise Windows Threat Defense Platform
 
-[![Platform](https://img.shields.io/badge/Platform-Windows%2010%20%2F%2011-blue.svg)](https://microsoft.com/windows)
-[![Version](https://img.shields.io/badge/Version-2.6.87-FFD93D.svg)](https://github.com/fikrado2/fikrado-security/releases)
-[![Python](https://img.shields.io/badge/Python-3.11%2B-blue.svg)](https://python.org)
-[![Framework](https://img.shields.io/badge/UI-PySide6%20%28Qt%29-green.svg)](https://qt.io)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+<div align="center">
 
-**Fikrado Security** is a standalone, next-generation Windows desktop cybersecurity and threat defense platform. Packaged as a double-click executable (`FikradoSecurity.exe`), it requires zero Python runtime dependencies and automatically requests Administrator elevation via an embedded UAC manifest.
+![Fikrado Security Banner](assets/logo.png)
 
-**Publisher:** Fikrado Security · **Website:** [fikrado2.github.io](https://fikrado2.github.io) · **LinkedIn:** [Yahye Abdirahman](https://www.linkedin.com/in/yahye-abdirahman/) · **GitHub:** [fikrado-orgnasation](https://github.com/fikrado-orgnasation/)
+# FIKRADO SECURITY
+### Next-Generation Native Windows Endpoint Defense & Threat Intelligence Platform
 
-### What's New in 2.6.87
-- **Instant page switching:** pages are created on first visit instead of all at startup, and the expensive whole-page fade effect was removed.
-- **Visible loading feedback:** a glass spinner overlay appears while a page is prepared and while background security data is being collected.
-- **Non-blocking security audits:** Defender, firewall, startup, process, browser, hardening and DNS queries now run off the UI thread and are cached, so the interface never freezes.
-- **Faster startup and rendering:** icon rendering is cached, global text-glow traversal was removed, and the dashboard reuses its last audit result.
-- **Stable release line:** this build is pinned at **2.6.87** and keeps that version number for subsequent fixes.
-- **Glass + 3D interface:** layered translucent surfaces, gradient highlights, soft depth and a painted ambient backdrop across every page.
-- **Colored vector icons:** 59 hand-tuned SVG icons replace every emoji in the interface, with semantic colors for safe, warning, high and critical states.
-- **Wider real-time shield:** watches user folders, startup persistence, new network listeners, removable drives and optional full drive roots — not just Downloads and Temp.
-- **Native Windows behavior:** rounded DWM window chrome, system tray presence, close-to-tray protection, and a live shield status pill.
-- **Silent background execution:** every PowerShell, netsh, winget, Defender and scanner command runs through a hidden-subprocess helper, so no console windows ever flash on screen.
-- **Release metadata:** embedded publisher, product name, icon and version information (`2.6.87.0`) in the Windows executable.
+[![Platform](https://img.shields.io/badge/Platform-Windows%2011%20%7C%20Windows%2010-0078D4?style=for-the-badge&logo=windows&logoColor=white)](https://microsoft.com/windows)
+[![Version](https://img.shields.io/badge/Release-v2.6.87-FFC700?style=for-the-badge&logo=github&logoColor=black)](https://github.com/fikrado2/fikrado-security/releases)
+[![Rust](https://img.shields.io/badge/Language-Rust%202021%20LTO-DEA584?style=for-the-badge&logo=rust&logoColor=black)](https://www.rust-lang.org)
+[![Subsystem](https://img.shields.io/badge/Subsystem-Native%20Win32%20GUI-00FF88?style=for-the-badge&logo=windows-terminal&logoColor=black)](https://learn.microsoft.com/en-us/windows/win32/)
+[![Security Engine](https://img.shields.io/badge/Encryption-AES--256--GCM%20%7C%20DPAPI-00D2FF?style=for-the-badge&logo=securityscorecard&logoColor=black)](https://csrc.nist.gov/)
+[![License](https://img.shields.io/badge/License-MIT-white?style=for-the-badge)](LICENSE)
+
+<br/>
+
+**[Website](https://fikrado2.github.io)** • **[Download Installer](https://github.com/fikrado2/fikrado-security/releases/latest)** • **[Documentation](https://fikrado2.github.io)** • **[Author LinkedIn](https://www.linkedin.com/in/yahye-abdirahman/)** • **[Organization](https://github.com/fikrado-orgnasation/)**
+
+</div>
 
 ---
 
-## 📥 Download
+## 🛡️ Overview
 
-**Cross-Platform — Windows · Linux · macOS**
+**Fikrado Security** is a native Windows desktop cybersecurity platform completely engineered in **Rust**. Built for enterprise workstations, security administrators, and power users, it replaces bloated web-wrapped frameworks with a lightning-fast, high-efficiency native binary running with standard Windows 11 hardware-accelerated DWM rendering.
 
-Grab the latest prebuilt binary from the [Releases page](https://github.com/fikrado2/fikrado-security/releases/latest):
-
-- **Windows:** `FikradoSecurity.exe` → Double-click and accept the UAC elevation prompt.
-- **Linux:** `Fikrado-Security.AppImage` → `chmod +x Fikrado-Security.AppImage && ./Fikrado-Security.AppImage`
-- **macOS:** `Fikrado-Security.dmg` → Open the DMG, drag to Applications, then **right-click → Open** (first launch only; Apple Gatekeeper requires it for unsigned apps).
-
-> **Note:** All executables are unsigned by default. Windows SmartScreen / macOS Gatekeeper may show a warning. Verify the SHA-256 checksum published with each release if you want to confirm the download.
+Featuring a high-tech **Cyberpunk Gold & Electric Cyan** Dark Theme alongside a crisp **Frosted Glass Light Theme**, Fikrado Security combines military-grade threat neutralization with an intuitive, modern user experience matching official design mockups.
 
 ---
 
-## 🎨 Branding & User Interface Design
-- **Dark Nord Theme:** Styled using a custom Qt QSS stylesheet (`assets/styles/theme.qss`) based on the Arctic Nord palette:
-  - Backgrounds: `#242933` (deep), `#2E3440` (Nord0 main), `#3B4252` (Nord1 cards), `#434C5E` (Nord2 hover)
-  - Typography: `#ECEFF4` (Nord6), `#D8DEE9` (Nord4)
-  - Frost & Aurora accents: `#88C0D0` (Frost Cyan), `#A3BE8C` (Green), `#EBCB8B` (Yellow), `#D08770` (Orange), `#BF616A` (Red)
-- **Signature Brand Gradient:** Seamless transition from warm golden yellow (`#FFD93D`) to crisp frost cyan (`#88C0D0`), applied to primary action buttons, progress bars, active navigation states, and the logo glow effect.
-- **Embedded Visuals:** High-resolution branding bundled directly from `assets/logo.png` and multi-resolution `assets/logo.ico` (256×256 down to 16×16) for the title bar, taskbar, splash screen, and Windows binary icon.
-- **Micro-Interactions:** Custom frameless draggable title bar, smooth hover animations, floating non-blocking toast notifications (`ui/components/toast.py`), and an animated circular security posture gauge (`ui/components/circular_gauge.py`).
+## ✨ Key Features & Capabilities
+
+### 🎨 1. Dual-Theme Visual Experience
+* **Cyberpunk Gold & Cyan Theme:** Dark circuit board backdrop (`#080C14`), glowing golden accents (`#FFC700`), and electric cyan highlights (`#00D2FF`).
+* **Frosted Glass Light Theme:** Modern high-contrast translucent styling (`#F8FAFC` / `#EAB308` / `#0284C7`) matching official product mockups.
+* **Top Theme Toggle:** Seamless one-click switching between dark and light themes with instant persistent theme memory via `SafeStorage`.
+* **Translucent Frosted Glass Sidebar:** Genuine `backdrop-filter: blur(25px)` effect with the iconic golden mask logo, glowing divider, and 10 dedicated navigation items.
+* **Zero-Trust Login Screen:** Startup workstation authentication supporting PIN verification, Windows Hello biometric bypass, and session remember options.
+
+### 📊 2. Live Kernel Telemetry & Analytics Dashboard
+* **Real-Time Hardware Telemetry:** Live CPU load percentage and physical RAM consumption queried directly from the Windows kernel.
+* **Total Activity for 7D:** Golden spline area wave chart with gradient illumination and responsive time-range toggling (7D, 14D, 30D).
+* **Daily Activities Donut:** Circular activity breakdown with categorized status counters (Safe, Blocked, Scanned, Other).
+* **Threat Map:** Global threat vector visualization with geographic distribution telemetry (Blocked, Warned, Allowed).
+* **Heuristics Core:** Neon compliance gauges for Memory, File System, Network Sockets, and Behavioral Telemetry.
+
+### 📄 3. Executive Security Audit & Vector PDF Generator
+* **One-Click Audit Reports:** Aggregates endpoint health, Microsoft Defender antivirus status, 3/3 Windows Firewall profiles, open network listening sockets, and CISA KEV vulnerability audit data.
+* **Presentation-Ready Vector PDF:** Generates a complete executive PDF document saved directly to your desktop (`%USERPROFILE%\Desktop\Fikrado_Security_Audit_Report.pdf`) and automatically launched in the default PDF viewer.
+
+### 🧰 4. 10-Tool Security Control Hub
+1. **Microsoft Defender Governance:** Query real-time protection, trigger background quick sweeps, and force antivirus definition updates.
+2. **Windows Firewall Management:** Inspect and configure Domain, Private, and Public profiles with one-click "Enable All Profiles".
+3. **Automated System Hardening:** Audit and remediate UAC policies, Defender settings, SMBv1 vulnerabilities, and Remote Desktop (RDP) exposure.
+4. **Startup Persistence Manager:** Detect and remove stealthy persistence hooks across `Run` and `RunOnce` registry hives.
+5. **Real-Time Process Explorer:** Monitor active process memory, CPU utilization, and detect disguised executables (e.g. rogue `svchost.exe` outside System32).
+6. **DNS & Network Diagnostics:** Inspect adapter configurations, gateway routing, DNS servers, public IP geolocation, and flush DNS resolver caches.
+7. **DoD 5220.22-M File Shredder:** Military-grade sanitization supporting 3-pass and 7-pass random overwrite patterns to render deleted files permanently unrecoverable.
+8. **Hosts File Tamper Guard:** Detect unauthorized domain hijacking in Windows `hosts` and restore default clean system configuration.
+9. **Password Strength & HIBP Checker:** Shannon entropy analysis paired with SHA-1 k-anonymity breach querying (100% zero password disclosure).
+10. **Removable Media & USB Immunizer:** Prevent auto-execution malware attacks on external USB storage drives.
 
 ---
 
-## 🖼️ Screenshots
+## 📦 Distribution Deliverables
 
-### Desktop Application Interface
-![Fikrado Security Desktop UI](assets/screenshots/desktop.png)
-
-### Command-Line / Terminal View
-![Fikrado Security CLI](assets/screenshots/cli.png)
-
----
-
-## 🛡️ Core Features & Modular Architecture
-
-```
-fikrado-security/
-│   main.py                   # Application entrypoint & Qt bootstrap
-│   build.bat                 # One-click Windows build script
-│   requirements.txt          # Production dependencies
-│   FikradoSecurity.spec      # PyInstaller build specification with UAC admin
-│   README.md                 # Complete documentation & user guide
-│
-├── assets/                   # Bundled brand assets (logo.png, logo.ico, SVG icons, QSS)
-├── config/                   # Constants, security rules, settings manager (%APPDATA%)
-├── core/                     # Logging, DPAPI crypto, SQLite database, quarantine vault, reporting
-├── scanners/                 # Malware scanner, YARA engine, PE analyzer, Network/Port, Vuln scanner
-├── plugins/                  # Dynamic AI intelligence plugins (Gemini, OpenAI, Claude, Ollama, etc.)
-├── tools/                    # Security tools hub (Real-time guard, Firewall, Startup, Shredder, etc.)
-└── ui/                       # Modern PySide6 UI (Title bar, circular gauge, toast, 11 pages)
-```
+| Deliverable | File | Size | Description |
+| :--- | :--- | :--- | :--- |
+| **Windows Setup Installer** | `FikradoSecuritySetup.exe` | ~5.7 MB | Self-contained installer that registers in Windows Settings and creates Desktop and Start Menu shortcuts. |
+| **Portable Application** | `FikradoSecurity.exe` | ~4.8 MB | Single standalone native executable requiring no installation or external runtimes. |
+| **Uninstaller** | `FikradoSecurityUninstall.exe` | ~357 KB | Clean uninstaller that removes shortcuts, registry keys, and installation directories. |
+| **Icon File** | `logo.ico` | ~132 KB | High-resolution multi-layer Windows application icon. |
 
 ---
 
-## 📑 Detailed Page Breakdown (11 Pages)
+## 🚀 Installation & Quick Start
 
-### 1. Security Dashboard
-- Animated circular security posture score (0–100) reflecting system hardening.
-- Live KPI metric cards: Scanned Files, Active Protections, Threats Blocked, Known CVEs Tracked.
-- Recent security threat activity log with color-coded severity badges.
-- One-click navigation to Quick Scan, Full Scan, Port Scanner, and Tools Hub.
+### Option A: Install via Windows Setup Installer (Recommended)
+1. Download **`FikradoSecuritySetup.exe`** from the [Latest Release](https://github.com/fikrado2/fikrado-security/releases/latest).
+2. Run the installer and click **Yes** to proceed.
+3. The installer will automatically:
+   - Deploy files to `%LOCALAPPDATA%\Programs\Fikrado Security`
+   - Create a desktop shortcut (`Fikrado Security.lnk`)
+   - Create a Start Menu shortcut
+   - Register in Windows Settings (*Apps > Installed Apps*)
+4. Launch directly from your desktop or Start Menu!
 
-### 2. Quick Malware Scan
-- High-speed targeted sweep of high-risk locations: running process binaries, Temp directories, Downloads, Desktop, and Startup hooks.
-- Real-time file path display, percentage progress bar, and ETA calculation.
-- Live findings table with one-click Quarantine, Whitelist, and AI Explain actions.
-
-### 3. Full Drive Scan
-- Comprehensive deep inspection across all mounted local Windows drives (`C:\`, `D:\`, etc.).
-- Multi-engine analysis with pause/resume and graceful cancellation.
-
-### 4. Custom Path Scan
-- Inspect individual suspicious executables, download archives, folders, or external USB storage drives.
-
-### 5. Open Port & Network Scanner
-- Scans and visualizes all active listening TCP/UDP sockets mapped to owning processes and PIDs.
-- Plain-language risk descriptions for dangerous ports (e.g. 21 FTP, 23 Telnet, 135 RPC, 445 SMB, 3389 RDP, 5900 VNC).
-- One-click actions: **Kill Offending Process** or **Add Inbound Windows Firewall Block Rule** via `netsh`.
-- Authorized remote IP / subnet scanner with compliance consent verification.
-
-### 6. Known & Emerging Vulnerability Check
-- Evaluates installed software inventory against the official **CISA Known Exploited Vulnerabilities (KEV)** catalog.
-- Identifies outdated applications and provides one-click background upgrades via `winget`.
-- Windows hotfix KB patch level audit.
-- Transparent and honest labeling acknowledging 0-day realities.
-
-### 7. AI Threat Intelligence & Neural Scan
-- Modular plugin system with built-in support for:
-  - **Google Gemini** (Gemini 2.5 Flash)
-  - **OpenAI** (GPT-4o / GPT-4o-mini)
-  - **Anthropic Claude** (Claude 3.5 Sonnet)
-  - **OpenRouter** (Unified multi-model gateway)
-  - **Ollama** (100% private, on-device local LLM execution)
-  - **Custom OpenAI-Compatible Endpoint** (LM Studio, vLLM, Groq, Mistral)
-- **Features:** Explain detected threats in plain English, reverse-engineer obfuscated scripts/macros, audit listening ports & persistence entries, and generate prioritized CISO remediation roadmaps.
-- **Privacy First:** Explicit consent modal displays the exact snippet/metadata before any cloud transmission.
-
-### 8. All-In-One Security Tools Hub
-Integrates 10 dedicated system utilities:
-1. **Real-Time Protection Shield:** Continuous monitoring of user folders, startup persistence, new network listeners, removable drives, and optional full drive roots, plus real-time process execution monitoring.
-2. **Microsoft Windows Defender Controls:** Check status, force quick scans, and update virus definitions.
-3. **Windows Firewall Manager:** Toggle Domain, Private, and Public profiles, review active rules, and add custom block rules.
-4. **Startup Applications Manager:** Audit autorun registry keys (`HKCU`/`HKLM` Run/RunOnce) and Startup folders; safely disable/enable items.
-5. **Process Manager:** Real-time process explorer with CPU/RAM metrics and reputation risk indicators (masquerading system names, executions from Temp).
-6. **Browser & Hosts Integrity:** Detect malicious domain redirects in `C:\Windows\System32\drivers\etc\hosts` (with one-click clean restoration) and audit browser extension permissions.
-7. **DoD 5220.22-M File Shredder:** Military-grade 3-pass and 7-pass file destruction with MFT metadata wiping.
-8. **Password & Breach Checker:** Local entropy calculation and HaveIBeenPwned k-anonymity breach verification (zero password or full hash disclosure).
-9. **System Hardening Audit:** Automated checks for UAC, Windows Defender, Firewall, SMBv1 legacy protocol, and Remote Desktop exposure.
-10. **Network & DNS Diagnostic:** Interface configuration, DNS server enumeration, and external public IP verification.
-
-### 9. Quarantine Vault
-- Isolated chamber storing malicious files encrypted with **AES-GCM** to prevent secondary execution.
-- Completely reversible: restore quarantined files to their original paths or permanently delete them.
-- Critical Windows system files (`System32`, `WinSxS`, core drivers) are safeguarded against accidental quarantine or deletion.
-
-### 10. Audit Reports & Executive Exports
-- Generates clean, standalone executive reports in styled HTML and PDF formats.
-- Includes telemetry summaries, threat detection inventories, open port listings, and remediation recommendations.
-
-### 11. Application Settings & AI Governance
-- Windows **DPAPI** encrypted credential storage (`win32crypt`) for all AI provider tokens.
-- Live connectivity testing button with real-time handshake validation.
-- Scanner tuning: heuristic sensitivity levels, Shannon entropy thresholds, and VirusTotal API configuration.
-- Custom exclusion whitelists (file paths and SHA-256 hashes).
+### Option B: Portable Standalone Executable
+1. Download **`FikradoSecurity.exe`** from the [Latest Release](https://github.com/fikrado2/fikrado-security/releases/latest).
+2. Double-click **`FikradoSecurity.exe`** to run instantly without installation.
 
 ---
 
-## 🚀 Building & Packaging
+## 🛠️ Building from Source
 
 ### Prerequisites
-- Windows 10 or 11 (64-bit)
-- Python 3.11+
+* Windows 11 or Windows 10 (64-bit)
+* [Rust](https://rustup.rs/) (stable toolchain with `x86_64-pc-windows-msvc`)
+* Microsoft Visual Studio C++ Build Tools (MSVC)
+* Microsoft Edge WebView2 Runtime (installed by default on Windows 10/11)
 
-### Build Steps
-1. Open PowerShell or Command Prompt in the project directory.
-2. Run the automated build script:
-   ```cmd
-   build.bat
-   ```
-3. PyInstaller will compile the code, embed the UAC administrator manifest, and bundle assets into:
-   ```
-   dist/FikradoSecurity.exe
-   ```
+### Build Commands
 
-### Running the Executable
-- Double-click `dist\FikradoSecurity.exe`.
-- Accept the Windows UAC elevation prompt.
-- The application will display the splash screen and launch into the Dark Nord interface.
+```powershell
+# Clone the repository
+git clone https://github.com/fikrado2/fikrado-security.git
+cd fikrado-security
+
+# One-Click Release Build Script
+.\build.bat
+```
+
+Or manually with Cargo:
+```powershell
+# Step 1: Build the main application and uninstaller in release mode
+cargo build --release --bin FikradoSecurity --bin FikradoSecurityUninstall
+
+# Step 2: Copy compiled binaries into dist folder
+Copy-Item target\release\FikradoSecurity.exe dist\ -Force
+Copy-Item target\release\FikradoSecurityUninstall.exe dist\ -Force
+
+# Step 3: Build the self-contained installer (embeds the compiled app)
+cargo build --release --bin FikradoSecuritySetup
+Copy-Item target\release\FikradoSecuritySetup.exe dist\ -Force
+```
 
 ---
 
-## 🌐 Build from Source (Cross-Platform)
+## 🔒 Security & Cryptographic Architecture
 
-### Linux
-```bash
-pip install -r requirements.txt
-python scripts/build.py linux
-chmod +x Fikrado-Security.AppImage
-./Fikrado-Security.AppImage
-```
+* **Windows DPAPI (Data Protection API):** Sensitive user credentials and AI provider keys are encrypted with user-scope machine master keys (`CryptProtectData`).
+* **AES-256-GCM Vault:** Quarantined suspicious artifacts are isolated and encrypted with 256-bit AES authenticated Galois/Counter Mode to prevent secondary execution.
+* **DoD 5220.22-M Compliance:** Digital shredder uses cryptographic pseudo-random overwriting compliant with National Industrial Security Program standards.
+* **SafeStorage Resilience:** UI state persistence employs protected memory fallback mechanisms that prevent `DOMException` security denials on sandboxed origins.
 
-### macOS
-```bash
-pip install -r requirements.txt
-python scripts/build.py mac
-# After building, open the DMG. On first launch, right-click → Open to bypass Gatekeeper.
-```
+---
 
-### All Platforms
-- The `.spec` file (`FikradoSecurity.spec`) is platform-aware: `icon`, `version`, and `uac_admin` are only applied on Windows; `.icns` and `.dmg` packaging are used on macOS; Linux uses the AppImage (`AppImageBuilder` / `linuxdeploy`) approach.
-- The `.desktop` file (`assets/fikrado-security.desktop`) is packaged with Linux builds.
-- The build script (`scripts/build.py`) detects OS automatically and selects the correct build mode (`win` / `linux` / `mac`).
+## 👥 Authors & Credits
+
+* **Lead Architect & Developer:** [Yahye Abdirahman](https://www.linkedin.com/in/yahye-abdirahman/)
+* **Organization:** [Fikrado Security](https://fikrado2.github.io)
+* **Official Repository:** [fikrado2/fikrado-security](https://github.com/fikrado2/fikrado-security)
+
+---
+
+## 📄 License
+
+This project is licensed under the [MIT License](LICENSE).

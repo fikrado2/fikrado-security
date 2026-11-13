@@ -1,9 +1,10 @@
 """
-Fikrado Security - Custom Window Title Bar
-Glass title bar with branding, publisher, elevation badge and vector window controls.
+Fikrado Security - Native Windows 11 Style Title Bar
+Replicates the native Windows 11 title bar appearance with proper dimensions,
+hover behavior, and system integration.
 """
 from PySide6.QtCore import QPoint, QSize, Qt
-from PySide6.QtGui import QIcon, QPixmap
+from PySide6.QtGui import QColor, QIcon, QPainter, QPainterPath, QPixmap
 from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -14,49 +15,103 @@ from PySide6.QtWidgets import (
 
 from config.constants import APP_VERSION, LOGO_PNG
 from core.system_info import is_admin
-from ui.effects import apply_text_glow
-from ui.icons import load_icon
+
+
+class NativeTitleButton(QPushButton):
+    """A single window control button styled like native Windows 11."""
+
+    def __init__(self, icon_name: str, parent=None):
+        super().__init__(parent)
+        self._icon_name = icon_name
+        self._hover_color = QColor(255, 255, 255, 16)
+        self._icon_color = QColor(236, 239, 244)
+        self._is_close = icon_name == "close"
+
+        if self._is_close:
+            self._hover_color = QColor(196, 43, 28)  # Windows 11 close red
+
+        self.setFixedSize(46, 32)
+        self.setCursor(Qt.PointingHandCursor)
+        self._render_icon()
+
+    def _render_icon(self):
+        """Render the icon as a pixmap with the current color."""
+        size = 10
+        pixmap = QPixmap(size * 2, size * 2)
+        pixmap.fill(Qt.GlobalColor.transparent)
+        painter = QPainter(pixmap)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+        painter.setPen(self._icon_color)
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+
+        # Draw the icon based on type
+        w, h = size, size
+        if self._icon_name == "minimize":
+            painter.drawLine(0, h // 2, w, h // 2)
+        elif self._icon_name == "maximize":
+            painter.drawRect(1, 1, w - 2, h - 2)
+        elif self._icon_name == "restore":
+            # Two overlapping rectangles
+            painter.drawRect(3, 1, w - 3, h - 3)
+            painter.drawRect(1, 3, w - 3, h - 3)
+        elif self._icon_name == "close":
+            painter.drawLine(1, 1, w - 1, h - 1)
+            painter.drawLine(w - 1, 1, 1, h - 1)
+
+        painter.end()
+        pixmap.setDevicePixelRatio(2.0)
+        self.setIcon(QIcon(pixmap))
+        self.setIconSize(QSize(size, size))
+
+    def enterEvent(self, event):
+        self.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {self._hover_color.name(QColor.NameFormat.HexArgb)};
+                border: none;
+                border-radius: 0px;
+            }}
+        """)
+        if self._is_close:
+            self._icon_color = QColor(255, 255, 255)
+            self._render_icon()
+        super().enterEvent(event)
+
+    def leaveEvent(self, event):
+        self.setStyleSheet("""
+            QPushButton {
+                background-color: transparent;
+                border: none;
+                border-radius: 0px;
+            }
+        """)
+        if self._is_close:
+            self._icon_color = QColor(236, 239, 244)
+            self._render_icon()
+        super().leaveEvent(event)
 
 
 class CustomTitleBar(QFrame):
+    """
+    Native Windows 11 style title bar.
+    Height: 48px (standard Windows 11 caption height)
+    Buttons: 46x32px each (standard Windows 11 caption button size)
+    """
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.parent_window = parent
         self.setObjectName("TitleBar")
-        self.setFixedHeight(46)
+        self.setFixedHeight(48)
         self.setStyleSheet("""
             QFrame#TitleBar {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                                            stop:0 rgba(255, 255, 255, 13),
-                                            stop:0.08 rgba(255, 255, 255, 5),
-                                            stop:1 rgba(16, 20, 27, 118));
-                border-bottom: 1px solid rgba(255, 255, 255, 20);
-                border-top: 1px solid rgba(255, 255, 255, 10);
+                background: transparent;
+                border-bottom: 1px solid rgba(255, 255, 255, 8);
             }
             QPushButton {
                 background: transparent;
-                border: 1px solid transparent;
-                border-radius: 8px;
-                min-width: 40px;
-                max-width: 40px;
-                min-height: 30px;
-                max-height: 30px;
-                margin: 0 2px;
-            }
-            QPushButton:hover {
-                background-color: rgba(255, 255, 255, 18);
-                border-color: rgba(255, 255, 255, 28);
-            }
-            QPushButton:pressed {
-                background-color: rgba(255, 255, 255, 8);
-            }
-            #CloseBtn:hover {
-                background-color: #BF616A;
-                border-color: rgba(255, 255, 255, 70);
-            }
-            #CloseBtn:pressed {
-                background-color: #A54F58;
+                border: none;
+                border-radius: 0px;
+                color: #ECEFF4;
             }
         """)
         self._drag_pos = QPoint()
@@ -64,88 +119,70 @@ class CustomTitleBar(QFrame):
 
     def _init_ui(self):
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(14, 0, 8, 0)
-        layout.setSpacing(9)
+        layout.setContentsMargins(12, 0, 0, 0)
+        layout.setSpacing(0)
 
-        # 1. Logo
-        self.logo_label = QLabel()
+        # 1. App icon (16x16 like native)
+        self.icon_label = QLabel()
         if LOGO_PNG.exists():
-            pixmap = QPixmap(str(LOGO_PNG)).scaled(26, 26, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-            self.logo_label.setPixmap(pixmap)
-        self.logo_label.setFixedSize(26, 26)
-        self.logo_label.setStyleSheet("background: transparent; border: none;")
-        logo_glow = apply_text_glow(self.logo_label, "#FFD93D", blur=18, opacity=130)
-        layout.addWidget(self.logo_label)
+            pixmap = QPixmap(str(LOGO_PNG)).scaled(16, 16, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            self.icon_label.setPixmap(pixmap)
+        self.icon_label.setFixedSize(16, 16)
+        self.icon_label.setStyleSheet("background: transparent; border: none;")
+        layout.addWidget(self.icon_label)
+        layout.addSpacing(8)
 
-        # 2. App title + publisher
-        title_box = QHBoxLayout()
-        title_box.setSpacing(8)
+        # 2. Title text (Segoe UI, 12px like native)
         self.title_label = QLabel("Fikrado Security")
         self.title_label.setStyleSheet(
-            "color: #ECEFF4; font-weight: 700; font-size: 13px; "
-            "letter-spacing: 0.4px; background: transparent;"
+            "color: #ECEFF4; font-family: 'Segoe UI Variable Text', 'Segoe UI', sans-serif; "
+            "font-size: 12px; font-weight: 400; background: transparent;"
         )
-        apply_text_glow(self.title_label, "#BFE6EF", blur=10, opacity=95)
-        title_box.addWidget(self.title_label)
+        layout.addWidget(self.title_label)
+        layout.addSpacing(6)
 
+        # 3. Version badge (small, subtle)
         version_lbl = QLabel(f"v{APP_VERSION}")
         version_lbl.setStyleSheet(
-            "color: #7F8A99; font-size: 10px; font-weight: 600; "
-            "background: transparent;"
+            "color: #7F8A99; font-family: 'Segoe UI Variable Text', 'Segoe UI', sans-serif; "
+            "font-size: 10px; background: transparent;"
         )
-        title_box.addWidget(version_lbl)
-        layout.addLayout(title_box)
+        layout.addWidget(version_lbl)
 
-        # 3. UAC admin badge
+        # 4. Admin badge
         admin_state = is_admin()
-        badge_text = "ADMINISTRATOR" if admin_state else "USER"
-        badge_style = (
-            "background-color: rgba(163, 190, 140, 40); color: #A3BE8C; "
-            "border: 1px solid rgba(163, 190, 140, 120);"
-            if admin_state
-            else "background-color: rgba(235, 203, 139, 32); color: #EBCB8B; "
-                 "border: 1px solid rgba(235, 203, 139, 100);"
-        )
-        self.badge_label = QLabel(badge_text)
-        self.badge_label.setStyleSheet(f"""
-            {badge_style}
-            font-size: 9px;
-            font-weight: 700;
-            letter-spacing: 0.8px;
-            padding: 0 8px;
-            border-radius: 9px;
-        """)
-        self.badge_label.setFixedHeight(20)
-        self.badge_label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(self.badge_label)
+        if admin_state:
+            badge = QLabel("ADMIN")
+            badge.setStyleSheet("""
+                color: #A3BE8C;
+                background-color: rgba(163, 190, 140, 20);
+                border: 1px solid rgba(163, 190, 140, 60);
+                border-radius: 4px;
+                padding: 1px 6px;
+                font-size: 9px;
+                font-weight: 600;
+                font-family: 'Segoe UI Variable Text', 'Segoe UI', sans-serif;
+            """)
+            layout.addWidget(badge)
+            layout.addSpacing(6)
 
         layout.addStretch()
 
-        # 4. Window controls (vector icons, no glyph fonts)
-        self.min_btn = QPushButton()
-        self.min_btn.setIcon(load_icon("minimize", 12, "#D8DEE9"))
-        self.min_btn.setIconSize(QSize(12, 12))
+        # 5. Window controls (native Windows 11 style)
+        self.min_btn = NativeTitleButton("minimize", self)
         self.min_btn.setToolTip("Minimize")
         self.min_btn.clicked.connect(self._minimize_window)
         layout.addWidget(self.min_btn)
 
-        self.max_btn = QPushButton()
-        self.max_btn.setIcon(load_icon("maximize", 12, "#D8DEE9"))
-        self.max_btn.setIconSize(QSize(12, 12))
+        self.max_btn = NativeTitleButton("maximize", self)
         self.max_btn.setToolTip("Maximize")
         self.max_btn.clicked.connect(self._toggle_maximize)
         layout.addWidget(self.max_btn)
 
-        self.close_btn = QPushButton()
-        self.close_btn.setObjectName("CloseBtn")
-        self.close_btn.setIcon(load_icon("close", 12, "#ECEFF4"))
-        self.close_btn.setIconSize(QSize(12, 12))
-        self.close_btn.setToolTip("Close to tray")
+        self.close_btn = NativeTitleButton("close", self)
+        self.close_btn.setToolTip("Close")
         self.close_btn.clicked.connect(self._close_window)
         layout.addWidget(self.close_btn)
-
-        for button in (self.min_btn, self.max_btn, self.close_btn):
-            button.setCursor(Qt.PointingHandCursor)
 
     def _minimize_window(self):
         if self.parent_window:
@@ -162,8 +199,8 @@ class CustomTitleBar(QFrame):
             self._set_maximize_icon(True)
 
     def _set_maximize_icon(self, maximized: bool):
-        name = "restore" if maximized else "maximize"
-        self.max_btn.setIcon(load_icon(name, 12, "#D8DEE9"))
+        self.max_btn._icon_name = "restore" if maximized else "maximize"
+        self.max_btn._render_icon()
         self.max_btn.setToolTip("Restore" if maximized else "Maximize")
 
     def _close_window(self):

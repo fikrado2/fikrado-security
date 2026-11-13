@@ -2,65 +2,50 @@
 setlocal enabledelayedexpansion
 
 echo =======================================================
-echo          Fikrado Security - Build Automation
+echo          Fikrado Security - Rust Native Build
 echo =======================================================
 echo.
 
 cd /d "%~dp0"
 
-REM 1. Check Python / Virtual Environment
-if exist ".venv\Scripts\python.exe" (
-    set "PYTHON_EXE=.venv\Scripts\python.exe"
-    set "PYINSTALLER_EXE=.venv\Scripts\pyinstaller.exe"
-    echo [*] Using virtual environment Python: !PYTHON_EXE!
-) else (
-    where python >nul 2>&1
-    if errorlevel 1 (
-        echo [!] Error: Python is not installed or not in PATH.
-        exit /b 1
-    )
-    set "PYTHON_EXE=python"
-    set "PYINSTALLER_EXE=pyinstaller"
-    echo [*] Using system Python.
-)
-
-REM 2. Verify / Build Assets
-echo [*] Checking branding and assets...
-if not exist "assets\logo.ico" (
-    echo [*] Generating assets\logo.ico from assets\logo.png...
-    !PYTHON_EXE! -c "from PIL import Image; img = Image.open('assets/logo.png').convert('RGBA'); img.save('assets/logo.ico', format='ICO', sizes=[(16,16),(24,24),(32,32),(48,48),(64,64),(128,128),(256,256)])"
-)
-
-REM 3. Clean previous builds
-echo [*] Cleaning previous build artifacts...
-if exist "build" rmdir /s /q "build"
-if exist "dist\FikradoSecurity.exe" del /f /q "dist\FikradoSecurity.exe"
-
-REM 4. Execute PyInstaller
-echo [*] Packaging standalone executable with PyInstaller...
-echo [*] Requesting Administrator UAC manifest and bundling assets...
-!PYINSTALLER_EXE! --clean FikradoSecurity.spec
-
+REM 1. Check Cargo / Rust
+where cargo >nul 2>&1
 if errorlevel 1 (
-    echo.
-    echo [!] Build failed during PyInstaller packaging.
+    echo [!] Error: Cargo is not installed or not in PATH.
+    echo Please install Rust from https://rustup.rs
     exit /b 1
 )
 
-REM 5. Verify Output Executable
-if exist "dist\FikradoSecurity.exe" (
-    echo.
-    echo =======================================================
-    echo [SUCCESS] FikradoSecurity.exe successfully created!
-    echo Output Location: %~dp0dist\FikradoSecurity.exe
-    for %%F in ("dist\FikradoSecurity.exe") do (
-        set /a size_mb=%%~zF / 1048576
-        echo Binary Size: !size_mb! MB - %%~zF bytes
-    )
-    echo =======================================================
-    exit /b 0
+REM 2. Ensure dist/ exists
+if not exist "dist" mkdir "dist"
+
+REM 3. Compile Main Application and Uninstaller
+echo [*] Step 1/2: Compiling Fikrado Security and Uninstaller...
+cargo build --release --bin FikradoSecurity --bin FikradoSecurityUninstall
+if errorlevel 1 (
+    echo [!] Main application build failed.
+    exit /b 1
 )
 
+copy /y "target\release\FikradoSecurity.exe" "dist\FikradoSecurity.exe" >nul
+copy /y "target\release\FikradoSecurityUninstall.exe" "dist\FikradoSecurityUninstall.exe" >nul
+if exist "assets\logo.ico" copy /y "assets\logo.ico" "dist\logo.ico" >nul
+
+REM 4. Compile Installer (embeds the compiled app)
+echo [*] Step 2/2: Compiling Fikrado Security Setup Installer...
+cargo build --release --bin FikradoSecuritySetup
+if errorlevel 1 (
+    echo [!] Installer build failed.
+    exit /b 1
+)
+
+copy /y "target\release\FikradoSecuritySetup.exe" "dist\FikradoSecuritySetup.exe" >nul
+
 echo.
-echo [!] Error: dist\FikradoSecurity.exe was not generated.
-exit /b 1
+echo =======================================================
+echo [SUCCESS] All native deliverables built successfully!
+echo.
+echo  - Main App:  %~dp0dist\FikradoSecurity.exe
+echo  - Installer: %~dp0dist\FikradoSecuritySetup.exe
+echo  - Uninstall: %~dp0dist\FikradoSecurityUninstall.exe
+echo =======================================================

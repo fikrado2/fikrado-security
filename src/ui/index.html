@@ -1,0 +1,1162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fikrado Security</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="dark-theme">
+
+  <!-- Startup Loading Screen (Centered Horizontally & Vertically) -->
+  <div id="loading-screen">
+    <div class="loading-container">
+      <img src="logo.png" class="loading-logo" alt="Fikrado Security" />
+      <div class="loading-title">FIKRADO SECURITY</div>
+      <div class="loading-subtitle">Enterprise Windows Endpoint Defense & Threat Intelligence</div>
+      <div class="loading-progress-wrap">
+        <div id="loading-bar" class="loading-progress-bar"></div>
+      </div>
+      <div id="loading-status" class="loading-status-text">Initializing security core...</div>
+      <div class="loading-version">FIKRADO SECURITY · v2.6.87</div>
+    </div>
+  </div>
+
+  <!-- Startup Login Screen / Zero-Trust Authentication Screen -->
+  <div id="login-screen" class="hidden">
+    <div class="login-card">
+      <div class="login-logo-wrap">
+        <img src="logo.png" class="login-shield-logo" alt="Fikrado Security" />
+      </div>
+      <div class="login-title">FIKRADO <span class="accent-text">SECURITY</span></div>
+      <div class="login-subtitle">Zero-Trust Endpoint Protection · Authorized Workstation</div>
+
+      <div class="login-user-badge">
+        <div class="login-avatar-wrap">
+          <svg class="login-avatar-svg" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+          <div class="online-indicator-dot"></div>
+        </div>
+        <div class="login-user-meta">
+          <div class="login-user-name">Yahye Abdirahman</div>
+          <div class="login-user-role">Security Administrator · Windows 11 Verified</div>
+        </div>
+      </div>
+
+      <div class="login-input-group">
+        <label for="login-pin" class="login-input-label">Enter Security PIN or Password</label>
+        <div class="login-input-wrap">
+          <svg class="input-lock-icon" viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
+          <input type="password" id="login-pin" class="login-pin-input" placeholder="Enter PIN (Default: 2026)" value="2026" onkeydown="if(event.key==='Enter') submitLogin();" />
+          <button type="button" class="pin-toggle-btn" onclick="togglePinVisibility()" title="Show/Hide PIN">
+            <svg id="eye-icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="login-options-row">
+        <label class="remember-label">
+          <input type="checkbox" id="remember-session-check" checked />
+          <span>Remember session on this machine</span>
+        </label>
+      </div>
+
+      <div class="login-actions">
+        <button class="btn-login-primary" onclick="submitLogin()">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+          <span>Unlock Security Suite</span>
+        </button>
+        <button class="btn-login-secondary" onclick="fastBypassLogin()">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M17.81 4.47c-.08 0-.16-.02-.23-.06C15.66 3.42 14 3 12.01 3c-1.98 0-3.86.47-5.57 1.41-.24.13-.54.04-.68-.2-.13-.24-.04-.55.2-.68C7.82 2.52 9.86 2 12.01 2c2.13 0 3.99.47 5.92 1.5.24.13.33.43.2.67-.08.19-.22.3-.32.3zm2.46 3.03c-.15 0-.31-.05-.44-.15-2.18-1.74-4.88-2.69-7.82-2.69-2.92 0-5.64.96-7.82 2.7-.22.18-.53.14-.71-.08-.18-.21-.14-.52.08-.7C5.9 4.7 8.84 3.66 12.01 3.66c3.16 0 6.1 1.05 8.44 2.92.22.18.25.49.08.71-.09.11-.23.21-.36.21z"/></svg>
+          <span>Windows Hello / Fast Access</span>
+        </button>
+      </div>
+
+      <div class="login-footer-security">
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="#00FF88"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg>
+        <span>AES-256 GCM Hardware Encrypted Session</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Center -->
+  <div id="toast-container"></div>
+
+  <!-- Security Telemetry Modal -->
+  <div id="telemetry-modal">
+    <div class="telemetry-card">
+      <div class="telemetry-header">
+        <div class="telemetry-title">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="#00FF88"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg>
+          <span>System Security Telemetry & Integrity</span>
+        </div>
+        <button class="top-caption-btn" onclick="closeTelemetryModal()">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/></svg>
+        </button>
+      </div>
+      <div class="telemetry-grid">
+        <div class="telemetry-item">
+          <svg class="telemetry-item-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+          <div>
+            <div class="telemetry-item-name">Real-Time Shield</div>
+            <div class="telemetry-item-sub">Active Socket & File Watcher</div>
+          </div>
+        </div>
+        <div class="telemetry-item">
+          <svg class="telemetry-item-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+          <div>
+            <div class="telemetry-item-name">Windows Defender</div>
+            <div class="telemetry-item-sub">Protected · Definitions Synced</div>
+          </div>
+        </div>
+        <div class="telemetry-item">
+          <svg class="telemetry-item-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+          <div>
+            <div class="telemetry-item-name">Windows Firewall</div>
+            <div class="telemetry-item-sub">3/3 Profiles Enforced</div>
+          </div>
+        </div>
+        <div class="telemetry-item">
+          <svg class="telemetry-item-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+          <div>
+            <div class="telemetry-item-name">SQLite Threat DB</div>
+            <div class="telemetry-item-sub">Connected · Integrity Verified</div>
+          </div>
+        </div>
+        <div class="telemetry-item">
+          <svg class="telemetry-item-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+          <div>
+            <div class="telemetry-item-name">AES-256 Vault</div>
+            <div class="telemetry-item-sub">Zero Breaches · Enclave Safe</div>
+          </div>
+        </div>
+        <div class="telemetry-item">
+          <svg class="telemetry-item-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+          <div>
+            <div class="telemetry-item-name">Port Surveillance</div>
+            <div class="telemetry-item-sub">0 Risky Ports Open</div>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:8px;">
+        <button class="btn btn-secondary btn-sm" onclick="sendIpc('get_dashboard_stats'); showToast('System telemetry refreshed.', 'success');">Refresh Metrics</button>
+        <button class="btn btn-primary btn-sm" onclick="closeTelemetryModal(); navigateToPage(1); startScan('Quick');">Run Quick Audit</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Application Shell -->
+  <div id="app-root">
+
+    <!-- Transparent Frosted Glass Cyber Sidebar -->
+    <aside id="sidebar">
+      <div class="sidebar-mask-wrap">
+        <img src="logo.png" class="sidebar-mask-img" alt="FIKRADO" />
+        <div class="sidebar-mask-title">FIKRADO</div>
+        <div class="sidebar-mask-sub">Security</div>
+      </div>
+      <div class="sidebar-glow-divider"></div>
+
+      <!-- 10 Navigation Items Matching Mockup -->
+      <nav class="nav-list">
+        <div class="nav-item" data-page="page-0" onclick="navigateToPage('page-0', this)">
+          <svg class="nav-icon" viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+          <span>Home</span>
+        </div>
+        <div class="nav-item active" data-page="page-0" onclick="navigateToPage('page-0', this)">
+          <svg class="nav-icon" viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/></svg>
+          <span>Dashboard</span>
+        </div>
+        <div class="nav-item" data-page="page-1" onclick="navigateToPage('page-1', this)">
+          <svg class="nav-icon" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+          <span>Scan</span>
+        </div>
+        <div class="nav-item" data-page="page-7" onclick="navigateToPage('page-7', this)">
+          <svg class="nav-icon" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+          <span>Evaluations</span>
+        </div>
+        <div class="nav-item" data-page="page-9" onclick="navigateToPage('page-9', this)">
+          <svg class="nav-icon" viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+          <span>Audit Reports</span>
+        </div>
+        <div class="nav-item" data-page="page-8" onclick="navigateToPage('page-8', this)">
+          <svg class="nav-icon" viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
+          <span>Quarantine</span>
+        </div>
+        <div class="nav-item" data-page="page-4" onclick="navigateToPage('page-4', this)">
+          <svg class="nav-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+          <span>Port Scanner</span>
+        </div>
+        <div class="nav-item" data-page="page-5" onclick="navigateToPage('page-5', this)">
+          <svg class="nav-icon" viewBox="0 0 24 24"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>
+          <span>Updates & Vuls</span>
+        </div>
+        <div class="nav-item" data-page="page-6" onclick="navigateToPage('page-6', this)">
+          <svg class="nav-icon" viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9 4.03-9 9 0 2.12.74 4.07 1.97 5.61L4.35 19.4c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0l1.9-1.9C9.22 19.57 10.57 20 12 20c4.97 0 9-4.03 9-9s-4.03-9-9-9zm0 15c-3.31 0-6-2.69-6-6s2.69-6 6-6 6 2.69 6 6-2.69 6-6 6z"/></svg>
+          <span>AI Neural Scan</span>
+        </div>
+        <div class="nav-item" data-page="page-10" onclick="navigateToPage('page-10', this)">
+          <svg class="nav-icon" viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-8 12.5v-1.5h6v1.5h-6zm-4.5-2.29l3.29-3.29-3.29-3.29 1.06-1.06 4.35 4.35-4.35 4.35-1.06-1.06z"/></svg>
+          <span>Terminal</span>
+        </div>
+      </nav>
+
+      <!-- Sidebar User Profile matching Mockup -->
+      <div class="sidebar-user-profile" onclick="toggleUserProfileMenu()">
+        <div class="user-avatar-wrap">
+          <svg class="user-avatar-img" viewBox="0 0 24 24" fill="#00D2FF"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+          <div class="user-status-dot"></div>
+        </div>
+        <span class="user-name-text">Yahye Abdirahman</span>
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="#8E9AB0"><path d="M7 10l5 5 5-5z"/></svg>
+
+        <!-- Floating Profile Menu -->
+        <div id="user-profile-menu">
+          <div class="profile-menu-header">
+            <div class="profile-menu-title">Yahye Abdirahman</div>
+            <div class="profile-menu-sub">Administrator · Session Active</div>
+          </div>
+          <button class="profile-menu-btn" onclick="openSystemTelemetryModal()">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="#00D2FF"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg>
+            <span>Telemetry Center</span>
+          </button>
+          <button class="profile-menu-btn" onclick="toggleTheme()">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="#FFC700"><path d="M12 3c-4.97 0-9 4.03-9 9 0 2.12.74 4.07 1.97 5.61L4.35 19.4c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0l1.9-1.9C9.22 19.57 10.57 20 12 20c4.97 0 9-4.03 9-9s-4.03-9-9-9zm0 15c-3.31 0-6-2.69-6-6s2.69-6 6-6 6 2.69 6 6-2.69 6-6 6z"/></svg>
+            <span>Switch UI Theme</span>
+          </button>
+          <button class="profile-menu-btn" onclick="navigateToPage(9)">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="#00FF88"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+            <span>Export Audit PDF</span>
+          </button>
+          <button class="profile-menu-btn" onclick="lockWorkspace()" style="color:#FF4757;">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="#FF4757"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
+            <span>Lock Workspace</span>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main id="main-content" style="padding:0; overflow:hidden; display:flex; flex-direction:column;">
+
+      <!-- Top Header Bar matching Mockup -->
+      <header class="top-header-bar">
+        <div class="top-brand-title">
+          <span>FIK</span><span style="color:#FFC700;">RADO</span> <span class="brand-security">Security</span>
+        </div>
+        <div class="top-search-wrap">
+          <svg class="top-search-icon" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+          <input class="top-search-input" id="global-search-input" placeholder="Search..." oninput="handleGlobalSearch(this.value)" />
+        </div>
+        <div class="top-controls-wrap">
+          <!-- Top Theme Toggle Button -->
+          <button class="top-icon-btn" id="theme-toggle-btn" onclick="toggleTheme()" title="Switch Light/Dark Theme">
+            <svg id="theme-icon" viewBox="0 0 24 24" width="16" height="16" fill="#FFC700"><path d="M12 3c-4.97 0-9 4.03-9 9 0 2.12.74 4.07 1.97 5.61L4.35 19.4c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0l1.9-1.9C9.22 19.57 10.57 20 12 20c4.97 0 9-4.03 9-9s-4.03-9-9-9zm0 15c-3.31 0-6-2.69-6-6s2.69-6 6-6 6 2.69 6 6-2.69 6-6 6z"/></svg>
+          </button>
+
+          <!-- Windows Caption Buttons -->
+          <button class="top-caption-btn" onclick="sendIpc('window_minimize')" title="Minimize Window">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M19 13H5v-2h14v2z"/></svg>
+          </button>
+          <button class="top-caption-btn" onclick="sendIpc('window_maximize')" title="Maximize Window">
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/></svg>
+          </button>
+          <button class="top-caption-btn btn-close-hover" onclick="sendIpc('window_close')" title="Close Application">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/></svg>
+          </button>
+
+          <!-- Golden Notification Bell Button -->
+          <button class="top-icon-btn bell-btn" id="notif-btn" onclick="toggleNotificationDrawer()" title="Security Alerts">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z"/></svg>
+            <div class="bell-alert-dot"></div>
+          </button>
+
+          <!-- Floating Notification Drawer -->
+          <div id="notification-drawer">
+            <div class="notif-header">
+              <div class="notif-header-title">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="#FFC700"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z"/></svg>
+                <span>Live Security Center</span>
+              </div>
+              <button class="btn btn-secondary btn-sm" onclick="toggleNotificationDrawer()" style="padding:2px 8px; font-size:10.5px;">Close</button>
+            </div>
+            <div class="notif-item">
+              <svg class="notif-item-icon" viewBox="0 0 24 24" fill="#00FF88"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+              <div class="notif-item-body">
+                <div class="notif-item-title">Real-Time Protection Active</div>
+                <div class="notif-item-desc">Kernel drop surveillance and memory socket monitoring operational.</div>
+              </div>
+            </div>
+            <div class="notif-item">
+              <svg class="notif-item-icon" viewBox="0 0 24 24" fill="#FFC700"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg>
+              <div class="notif-item-body">
+                <div class="notif-item-title">Firewall Verified</div>
+                <div class="notif-item-desc">Domain, Private, and Public profiles enforced with zero inbound breaches.</div>
+              </div>
+            </div>
+            <div class="notif-item">
+              <svg class="notif-item-icon" viewBox="0 0 24 24" fill="#00D2FF"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+              <div class="notif-item-body">
+                <div class="notif-item-title">Database Synced</div>
+                <div class="notif-item-desc">SQLite threat database active with 7 security catalog tables.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <!-- Scrollable Pages Viewport -->
+      <div id="pages-viewport">
+
+      <!-- PAGE 0: Security Dashboard matching Mockup -->
+      <section id="page-0" class="page active">
+        <!-- Row 1: System Information + Total Activity for 7D -->
+        <div class="dashboard-hero-grid">
+          <!-- Card 1: System Information -->
+          <div class="cyber-card cyber-card-gold" id="card-sysinfo">
+            <div class="sysinfo-header">
+              <div class="sysinfo-icon-badge">
+                <svg class="sysinfo-header-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+              </div>
+              <span class="card-title-text">System Information</span>
+            </div>
+            <div class="sysinfo-rows">
+              <div class="sysinfo-row">
+                <span class="sysinfo-label">Username:</span>
+                <span class="sysinfo-value" id="sys-username-val">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="#00D2FF"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                  Yahye Abdirahman
+                </span>
+              </div>
+              <div class="sysinfo-row">
+                <span class="sysinfo-label">Platform:</span>
+                <span class="sysinfo-value" id="sys-platform-val">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="#00D2FF"><path d="M3 5.48L10.36 4.5v6.52H3V5.48zm0 7.52h7.36v6.52L3 18.52V13zm8.36-8.66L21 3v8.02h-9.64V4.34zm0 8.68H21V21l-9.64-1.34v-6.64z"/></svg>
+                  Windows 11
+                </span>
+              </div>
+              <div class="sysinfo-row">
+                <span class="sysinfo-label">Version:</span>
+                <span class="sysinfo-value accent-cyan" id="sys-version-val">v2.6.87</span>
+              </div>
+              <div class="sysinfo-row">
+                <span class="sysinfo-label">Database:</span>
+                <span class="sysinfo-value db-badge-clickable" id="sys-db-status" onclick="checkDatabaseHealth()" title="Click to test SQLite integrity">
+                  <span class="status-dot-pulse">●</span> Connected
+                </span>
+              </div>
+            </div>
+            <div class="sysinfo-chips-row">
+              <div class="metric-chip" onclick="refreshHardwareMetrics()" title="Click to refresh CPU load">
+                <svg class="metric-chip-icon" viewBox="0 0 24 24"><path d="M6 2v2H4c-1.1 0-2 .9-2 2v2H0v2h2v4H0v2h2v2c0 1.1.9 2 2 2h2v2h2v-2h4v2h2v-2h2c1.1 0 2-.9 2-2v-2h2v-2h-2v-4h2V8h-2V6c0-1.1-.9-2-2-2h-2V2h-2v2h-4V2H6zm0 4h12v12H6V6zm2 2v8h8V8H8z"/></svg>
+                <div class="chip-text-wrap">
+                  <div class="metric-chip-val" id="sys-cpu-val">12.5%</div>
+                  <div class="metric-chip-lbl">CPU</div>
+                </div>
+              </div>
+              <div class="chip-vertical-divider"></div>
+              <div class="metric-chip" onclick="refreshHardwareMetrics()" title="Click to refresh RAM telemetry">
+                <svg class="metric-chip-icon" viewBox="0 0 24 24"><path d="M2 7h20v10H2V7zm2 2v6h16V9H4zm3 1h2v4H7v-4zm4 0h2v4h-2v-4zm4 0h2v4h-2v-4z"/></svg>
+                <div class="chip-text-wrap">
+                  <div class="metric-chip-val" id="sys-ram-val">8.7 GB</div>
+                  <div class="metric-chip-lbl">RAM</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 2: Total Activity for 7D -->
+          <div class="cyber-card cyber-card-gold" id="card-activity-7d">
+            <div class="chart-header-row">
+              <div class="chart-title-wrap">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="#FFC700"><path d="M4 9h4v11H4V9zm6-5h4v16h-4V4zm6 9h4v7h-4v-7z"/></svg>
+                <span class="card-title-text">Total Activity for 7D</span>
+              </div>
+              <div class="chart-pill-dropdown" onclick="cycleActivityTimeRange()" title="Change Time Range">
+                <span id="chart-range-label">7 Days</span>
+                <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
+              </div>
+            </div>
+            <div style="position:relative; width:100%; height:170px;">
+              <svg id="spline-wave-svg" viewBox="0 0 540 160" width="100%" height="100%" style="overflow:visible;">
+                <defs>
+                  <linearGradient id="wave-gradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#FFC700" stop-opacity="0.55"/>
+                    <stop offset="60%" stop-color="#00D2FF" stop-opacity="0.18"/>
+                    <stop offset="100%" stop-color="#080C14" stop-opacity="0"/>
+                  </linearGradient>
+                  <filter id="glow-gold" x="-20%" y="-20%" width="140%" height="140%">
+                    <feGaussianBlur stdDeviation="4" result="blur" />
+                    <feMerge>
+                      <feMergeNode in="blur"/>
+                      <feMergeNode in="SourceGraphic"/>
+                    </feMerge>
+                  </filter>
+                </defs>
+                <!-- Grid Lines -->
+                <line x1="30" y1="20" x2="520" y2="20" stroke="var(--chart-grid)" stroke-width="1"/>
+                <line x1="30" y1="55" x2="520" y2="55" stroke="var(--chart-grid)" stroke-width="1"/>
+                <line x1="30" y1="90" x2="520" y2="90" stroke="var(--chart-grid)" stroke-width="1"/>
+                <line x1="30" y1="125" x2="520" y2="125" stroke="var(--chart-grid)" stroke-width="1"/>
+                <text x="5" y="24" fill="var(--chart-axis)" font-size="10">1K</text>
+                <text x="5" y="59" fill="var(--chart-axis)" font-size="10">800</text>
+                <text x="5" y="94" fill="var(--chart-axis)" font-size="10">400</text>
+                <text x="12" y="129" fill="var(--chart-axis)" font-size="10">0</text>
+                <!-- Area Fill -->
+                <path id="wave-area-path" d="M 50 120 Q 90 90, 120 95 T 190 75 T 260 90 T 330 45 T 410 45 T 500 15 L 500 135 L 50 135 Z" fill="url(#wave-gradient)" />
+                <!-- Spline Stroke -->
+                <path id="wave-spline-path" d="M 50 120 Q 90 90, 120 95 T 190 75 T 260 90 T 330 45 T 410 45 T 500 15" fill="none" stroke="var(--chart-stroke)" stroke-width="3.5" filter="url(#glow-gold)" stroke-linecap="round" />
+                <!-- Nodes -->
+                <circle cx="50" cy="120" r="4.5" fill="#FFFFFF" stroke="var(--chart-stroke)" stroke-width="2.5" class="chart-node" data-val="120 events" />
+                <circle cx="120" cy="95" r="4.5" fill="#FFFFFF" stroke="var(--chart-stroke)" stroke-width="2.5" class="chart-node" data-val="310 events" />
+                <circle cx="190" cy="75" r="4.5" fill="#FFFFFF" stroke="var(--chart-stroke)" stroke-width="2.5" class="chart-node" data-val="480 events" />
+                <circle cx="260" cy="90" r="4.5" fill="#FFFFFF" stroke="var(--chart-stroke)" stroke-width="2.5" class="chart-node" data-val="390 events" />
+                <circle cx="330" cy="45" r="4.5" fill="#FFFFFF" stroke="var(--chart-stroke)" stroke-width="2.5" class="chart-node" data-val="720 events" />
+                <circle cx="410" cy="45" r="4.5" fill="#FFFFFF" stroke="var(--chart-stroke)" stroke-width="2.5" class="chart-node" data-val="730 events" />
+                <circle cx="500" cy="15" r="5" fill="#FFFFFF" stroke="var(--chart-stroke)" stroke-width="3" filter="url(#glow-gold)" class="chart-node" data-val="980 events" />
+                <!-- Days Labels -->
+                <text x="40" y="152" fill="var(--chart-axis)" font-size="11">Tue</text>
+                <text x="108" y="152" fill="var(--chart-axis)" font-size="11">Wed</text>
+                <text x="178" y="152" fill="var(--chart-axis)" font-size="11">Thu</text>
+                <text x="252" y="152" fill="var(--chart-axis)" font-size="11">Fri</text>
+                <text x="322" y="152" fill="var(--chart-axis)" font-size="11">Sat</text>
+                <text x="400" y="152" fill="var(--chart-axis)" font-size="11">Sun</text>
+                <text x="488" y="152" fill="var(--chart-axis)" font-size="11">Mon</text>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- Row 2: Daily Activities + Threat Map + Heuristics -->
+        <div class="dashboard-secondary-grid">
+          <!-- Card 3: Daily Activities (Donut Chart) -->
+          <div class="cyber-card cyber-card-gold" id="card-daily-activities">
+            <div class="card-header-simple">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="#FFC700"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2z"/></svg>
+              <span class="card-title-text">Daily Activities</span>
+            </div>
+            <div class="donut-widget-wrap">
+              <div class="donut-svg-wrap">
+                <svg viewBox="0 0 120 120" width="120" height="120">
+                  <circle cx="60" cy="60" r="48" fill="none" stroke="var(--bar-track)" stroke-width="14" />
+                  <!-- Cyan Arc: Safe (45%) -->
+                  <circle cx="60" cy="60" r="48" fill="none" stroke="#00D2FF" stroke-width="14" stroke-dasharray="135 301" stroke-dashoffset="0" stroke-linecap="round" />
+                  <!-- Gold Arc: Blocked (30%) -->
+                  <circle cx="60" cy="60" r="48" fill="none" stroke="#FFC700" stroke-width="14" stroke-dasharray="85 301" stroke-dashoffset="-140" stroke-linecap="round" />
+                  <!-- Scanned Arc (25%) -->
+                  <circle cx="60" cy="60" r="48" fill="none" stroke="#8E9AB0" stroke-width="14" stroke-dasharray="55 301" stroke-dashoffset="-230" stroke-linecap="round" />
+                </svg>
+                <div class="donut-center-text">
+                  <span class="donut-center-lbl">Total</span>
+                  <span class="donut-center-num">2,780</span>
+                </div>
+              </div>
+              <div class="donut-legend-col">
+                <div class="donut-legend-item">
+                  <div class="donut-legend-left"><span class="legend-dot" style="background:#00FF88;"></span>Safe</div>
+                  <span class="donut-legend-num">1,220</span>
+                </div>
+                <div class="donut-legend-item">
+                  <div class="donut-legend-left"><span class="legend-dot" style="background:#FFC700;"></span>Blocked</div>
+                  <span class="donut-legend-num">680</span>
+                </div>
+                <div class="donut-legend-item">
+                  <div class="donut-legend-left"><span class="legend-dot" style="background:#00D2FF;"></span>Scanned</div>
+                  <span class="donut-legend-num">880</span>
+                </div>
+                <div class="donut-legend-item">
+                  <div class="donut-legend-left"><span class="legend-dot" style="background:var(--donut-other);"></span>Other</div>
+                  <span class="donut-legend-num">0</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 4: Threat Map -->
+          <div class="cyber-card cyber-card-cyan" id="card-threat-map">
+            <div class="card-header-simple">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="#FFC700"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg>
+              <span class="card-title-text">Threat Map</span>
+            </div>
+            <!-- High-tech stylized World Map with Glowing nodes -->
+            <svg class="threat-map-svg" viewBox="0 0 280 120">
+              <path class="map-continent" d="M20 45 Q 35 30, 60 35 Q 75 45, 65 65 Q 45 80, 40 70 Z" fill="var(--map-land)"/>
+              <path class="map-continent" d="M50 80 Q 60 75, 70 85 Q 75 110, 60 115 Q 50 105, 50 80 Z" fill="var(--map-land)"/>
+              <path class="map-continent" d="M100 30 Q 120 25, 135 35 Q 130 50, 115 50 Q 100 45, 100 30 Z" fill="var(--map-land)"/>
+              <!-- Africa / Middle East Glowing Hotspot -->
+              <path class="map-hotspot-zone" d="M110 55 Q 135 50, 145 65 Q 140 100, 125 105 Q 110 85, 110 55 Z" fill="#FFC700" fill-opacity="0.45" stroke="#FFC700" stroke-width="1"/>
+              <path class="map-continent" d="M150 25 Q 190 20, 240 30 Q 255 55, 230 70 Q 190 60, 170 45 Z" fill="var(--map-land)"/>
+              <path class="map-continent" d="M210 75 Q 240 70, 250 90 Q 235 105, 215 95 Z" fill="var(--map-land)"/>
+              <!-- Glowing Nodes -->
+              <circle cx="55" cy="50" r="3" fill="#00D2FF" filter="drop-shadow(0 0 6px #00D2FF)"/>
+              <circle cx="128" cy="75" r="4.5" fill="#FFC700" filter="drop-shadow(0 0 8px #FFC700)"/>
+              <circle cx="138" cy="62" r="3" fill="#FFC700"/>
+              <circle cx="185" cy="40" r="3.5" fill="#00D2FF" filter="drop-shadow(0 0 6px #00D2FF)"/>
+              <circle cx="230" cy="50" r="4" fill="#FFC700" filter="drop-shadow(0 0 8px #FFC700)"/>
+            </svg>
+            <div class="threat-counters-row">
+              <div class="threat-counter-col" onclick="filterThreats('Blocked')" title="View Blocked Threats">
+                <div class="threat-counter-lbl">Blocked</div>
+                <div class="threat-counter-val">120</div>
+              </div>
+              <div class="threat-divider-vert"></div>
+              <div class="threat-counter-col" onclick="filterThreats('Warned')" title="View Warning Alerts">
+                <div class="threat-counter-lbl">Warned</div>
+                <div class="threat-counter-val">45</div>
+              </div>
+              <div class="threat-divider-vert"></div>
+              <div class="threat-counter-col" onclick="filterThreats('Allowed')" title="View Safe Connections">
+                <div class="threat-counter-lbl">Allowed</div>
+                <div class="threat-counter-val">415</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 5: Heuristics -->
+          <div class="cyber-card cyber-card-cyan" id="card-heuristics">
+            <div class="card-header-simple">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="#FFC700"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+              <span class="card-title-text">Heuristics</span>
+            </div>
+            <div class="heuristics-list">
+              <div class="heuristic-item">
+                <span class="heuristic-name">Memory</span>
+                <div class="heuristic-bar-bg"><div class="heuristic-bar-fill fill-cyan" style="width:92%;"></div></div>
+                <span class="heuristic-pct">92%</span>
+              </div>
+              <div class="heuristic-item">
+                <span class="heuristic-name">Files</span>
+                <div class="heuristic-bar-bg"><div class="heuristic-bar-fill fill-gold" style="width:76%;"></div></div>
+                <span class="heuristic-pct">76%</span>
+              </div>
+              <div class="heuristic-item">
+                <span class="heuristic-name">Network</span>
+                <div class="heuristic-bar-bg"><div class="heuristic-bar-fill fill-cyan" style="width:68%;"></div></div>
+                <span class="heuristic-pct">68%</span>
+              </div>
+              <div class="heuristic-item">
+                <span class="heuristic-name">Behavior</span>
+                <div class="heuristic-bar-bg"><div class="heuristic-bar-fill fill-gold" style="width:81%;"></div></div>
+                <span class="heuristic-pct">81%</span>
+              </div>
+            </div>
+            <div class="status-pill-secure" id="btn-all-secure" onclick="openSystemTelemetryModal()" title="Click to view full security telemetry">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg>
+              <span id="secure-pill-text">All Systems Secure</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick Launch Action Bar & Real-Time Feed -->
+        <div class="cyber-card" style="margin-bottom: 18px; border:1px solid var(--border-subtle);">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+            <div style="display:flex; align-items:center; gap:12px;">
+              <span class="status-dot-pulse">●</span>
+              <div>
+                <strong style="color:var(--text-primary); font-size:14px;">Real-Time Heuristic Shield Active</strong>
+                <p style="color:var(--text-secondary); font-size:12px; margin-top:2px;">Background socket monitor, drop folder surveillance, and PE entropy analysis operational.</p>
+              </div>
+            </div>
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+              <button class="btn btn-primary btn-sm" id="btn-quick-scan-dash" onclick="navigateToPage(1); startScan('Quick');">⚡ Quick Scan [Idle]</button>
+              <button class="btn btn-secondary btn-sm" id="btn-full-scan-dash" onclick="navigateToPage(2); startScan('Full');">🔍 Full Drive Scan [Ready]</button>
+              <button class="btn btn-secondary btn-sm" id="btn-audit-dash" onclick="navigateToPage(9);">📄 Export Audit PDF</button>
+              <button class="btn btn-secondary btn-sm" id="btn-ports-dash" onclick="navigateToPage(4);">🌐 Port Scanner</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent Threat Activity Feed Table -->
+        <div class="cyber-card" style="border: 1px solid var(--border-subtle);">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 14px;">
+            <h3 style="font-size: 14px; font-weight: 800; color: var(--text-primary);">Recent Endpoint Threat Events</h3>
+            <button class="btn btn-secondary btn-sm" onclick="sendIpc('get_recent_threats')">Refresh Feed</button>
+          </div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Severity</th>
+                  <th>Threat Name</th>
+                  <th>Type</th>
+                  <th>Detection Engine</th>
+                  <th>File Path</th>
+                  <th>Time</th>
+                  <th>Action Taken</th>
+                </tr>
+              </thead>
+              <tbody id="dashboard-threats-tbody">
+                <tr>
+                  <td><span class="badge badge-low">SAFE</span></td>
+                  <td>System Integrity Baseline Verified</td>
+                  <td>Audit</td>
+                  <td>Heuristic Shield</td>
+                  <td>C:\Windows\System32</td>
+                  <td>Today, 10:15</td>
+                  <td>Protected</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- PAGE 1: Quick Scan -->
+      <section id="page-1" class="page">
+        <div class="page-header">
+          <h1 class="page-title">Quick Malware Scan</h1>
+          <p class="page-subtitle">Targeted sweep of high-risk locations: Temp, User Downloads, Desktop, Startup hooks, and active processes.</p>
+        </div>
+
+        <div class="card">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <div>
+              <h3 style="font-size: 16px; font-weight: 800;">Targeted Sweep Engine</h3>
+              <p style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Inspects executables, scripts, and section entropy anomalies.</p>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button id="scan-btn-start" class="btn btn-primary" onclick="startScan('Quick')">Start Quick Scan</button>
+              <button id="scan-btn-pause" class="btn btn-secondary" style="display:none;" onclick="pauseScan()">Pause</button>
+              <button id="scan-btn-cancel" class="btn btn-danger" style="display:none;" onclick="cancelScan()">Cancel</button>
+            </div>
+          </div>
+
+          <div id="scan-progress-box" class="subcard" style="display: none; margin-bottom: 16px;">
+            <div style="display: flex; justify-content: space-between; font-weight: 700; margin-bottom: 8px;">
+              <span id="scan-current-file" style="max-width: 75%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Preparing scan...</span>
+              <span id="scan-percentage-text">0%</span>
+            </div>
+            <div class="loading-progress-wrap" style="height: 10px; margin-bottom: 8px;">
+              <div id="scan-progress-bar" class="loading-progress-bar" style="width: 0%;"></div>
+            </div>
+            <div id="scan-counts" style="font-size: 11.5px; color: var(--text-muted);">0 / 0 files</div>
+          </div>
+
+          <h4 style="font-size: 13px; font-weight: 800; margin-bottom: 10px;">Findings & Detection Inventory</h4>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Severity</th>
+                  <th>Threat Name</th>
+                  <th>Type</th>
+                  <th>Path</th>
+                  <th>Engine</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="scan-threats-tbody">
+                <tr><td colspan="6" style="text-align:center; color:var(--text-muted);">No active threats detected. Click 'Start Quick Scan' to inspect.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- PAGE 2: Full Drive Scan -->
+      <section id="page-2" class="page">
+        <div class="page-header">
+          <h1 class="page-title">Full Drive Deep Inspection</h1>
+          <p class="page-subtitle">Multi-engine analysis sweeping all mounted local Windows partitions (C:\, D:\).</p>
+        </div>
+        <div class="card">
+          <p style="margin-bottom: 16px;">Comprehensive deep scan traverses all system drives, examining portable executable section entropy, known signatures, and persistence hooks.</p>
+          <button class="btn btn-primary" onclick="startScan('Full')">Run Full System Scan</button>
+        </div>
+      </section>
+
+      <!-- PAGE 3: Custom Scan -->
+      <section id="page-3" class="page">
+        <div class="page-header">
+          <h1 class="page-title">Custom Path Scan</h1>
+          <p class="page-subtitle">Inspect individual suspicious executables, download archives, folders, or external USB storage drives.</p>
+        </div>
+        <div class="card">
+          <label style="font-weight: 700; display: block; margin-bottom: 8px;">Enter File or Directory Path:</label>
+          <div style="display: flex; gap: 10px; margin-bottom: 16px;">
+            <input id="custom-scan-path" class="input-text" placeholder="e.g. C:\Users\YourUser\Downloads\suspicious.exe" />
+            <button class="btn btn-primary" onclick="startScan('Custom', document.getElementById('custom-scan-path').value)">Scan Target</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- PAGE 4: Open Port & Network Scanner -->
+      <section id="page-4" class="page">
+        <div class="page-header">
+          <h1 class="page-title">Open Port & Network Scanner</h1>
+          <p class="page-subtitle">Visualizes listening ports, maps PIDs and processes, flags risky ports with plain-language alerts, and provides one-click remediation.</p>
+        </div>
+
+        <div class="card">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+            <h3 style="font-size: 15px; font-weight: 800;">Active Listening Sockets & Connections</h3>
+            <button class="btn btn-secondary btn-sm" onclick="loadNetworkConnections()">Refresh Sockets</button>
+          </div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Protocol</th>
+                  <th>Port</th>
+                  <th>Local IP</th>
+                  <th>Process Name</th>
+                  <th>PID</th>
+                  <th>Risk Analysis</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="ports-tbody">
+                <tr><td colspan="7" style="text-align:center;">Loading active network sockets...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- PAGE 5: Updates & Vulnerabilities (CISA KEV) -->
+      <section id="page-5" class="page">
+        <div class="page-header">
+          <h1 class="page-title">Known & Emerging Vulnerability Check</h1>
+          <p class="page-subtitle">Audits installed applications against the CISA Known Exploited Vulnerabilities (KEV) catalog with one-click background upgrades.</p>
+        </div>
+
+        <div class="card">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+            <h3 style="font-size: 15px; font-weight: 800;">Installed Software Inventory & CVE Correlator</h3>
+            <button class="btn btn-secondary btn-sm" onclick="loadVulnerabilities()">Refresh Software</button>
+          </div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Application Name</th>
+                  <th>Version</th>
+                  <th>Publisher</th>
+                  <th>CISA KEV Vulnerabilities</th>
+                  <th>Remediation</th>
+                </tr>
+              </thead>
+              <tbody id="vulns-tbody">
+                <tr><td colspan="5" style="text-align:center;">Enumerating installed applications from Windows registry...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- PAGE 6: AI Threat Intelligence & Neural Scan -->
+      <section id="page-6" class="page">
+        <div class="page-header">
+          <h1 class="page-title">AI Threat Intelligence & Neural Scan</h1>
+          <p class="page-subtitle">Modular AI threat explanation, reverse-engineering obfuscated scripts, and prioritized CISO remediation roadmaps.</p>
+        </div>
+
+        <div class="card">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
+            <div>
+              <label style="font-weight:700; font-size:12px; display:block; margin-bottom:6px;">Select AI Engine:</label>
+              <select id="ai-provider-select" class="input-text">
+                <option value="gemini">Google Gemini (Gemini 2.5 Flash)</option>
+                <option value="openai">OpenAI (GPT-4o)</option>
+                <option value="anthropic">Anthropic (Claude 3.5 Sonnet)</option>
+                <option value="openrouter">OpenRouter (Multi-Model Gateway)</option>
+                <option value="ollama">Ollama (100% Private Local LLM)</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-weight:700; font-size:12px; display:block; margin-bottom:6px;">Threat Artifact Name:</label>
+              <input id="ai-threat-name" class="input-text" placeholder="e.g. Backdoor.CobaltStrike.Beacon" />
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
+            <div>
+              <label style="font-weight:700; font-size:12px; display:block; margin-bottom:6px;">Threat Classification:</label>
+              <input id="ai-threat-type" class="input-text" placeholder="e.g. Trojan / Backdoor" />
+            </div>
+            <div>
+              <label style="font-weight:700; font-size:12px; display:block; margin-bottom:6px;">File or Registry Path:</label>
+              <input id="ai-file-path" class="input-text" placeholder="e.g. C:\Users\User\Downloads\payload.exe" />
+            </div>
+          </div>
+
+          <div style="margin-bottom: 14px;">
+            <label style="font-weight:700; font-size:12px; display:block; margin-bottom:6px;">Suspicious Script Snippet or Custom Prompt:</label>
+            <textarea id="ai-prompt-input" class="input-text" style="height: 80px; resize: vertical;" placeholder="Paste suspicious PowerShell, VBScript, or ask a question regarding this detection..."></textarea>
+          </div>
+
+          <button class="btn btn-primary" onclick="runAiThreatAnalysis()">Generate AI Threat Assessment</button>
+
+          <div id="ai-output-box" class="subcard" style="margin-top: 18px; min-height: 120px; line-height: 1.6; white-space: pre-wrap; font-size: 13px;">
+Select a threat or enter suspicious code and click 'Generate AI Threat Assessment'.
+          </div>
+        </div>
+      </section>
+
+      <!-- PAGE 7: All-In-One Security Tools Hub -->
+      <section id="page-7" class="page">
+        <div class="page-header">
+          <h1 class="page-title">All-In-One Security Tools Hub</h1>
+          <p class="page-subtitle">Centralized operational suite for endpoint hardening, firewall governance, process surveillance, startup auditing, and military file destruction.</p>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 18px;">
+          <!-- Tool 1: Defender & Real-Time -->
+          <div class="card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px;">
+              <h3 style="font-size: 15px; font-weight: 800;">Microsoft Defender Controls</h3>
+              <span id="defender-status-badge" class="badge badge-low">SHIELDED</span>
+            </div>
+            <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 14px;">Inspect Windows Defender antivirus engine, definition updates, and real-time protection.</p>
+            <div style="display:flex; gap: 8px; flex-wrap:wrap;">
+              <button class="btn btn-primary btn-sm" onclick="triggerDefenderScan()">Force Quick Scan</button>
+              <button class="btn btn-secondary btn-sm" onclick="updateDefenderDefs()">Update Signatures</button>
+              <button class="btn btn-secondary btn-sm" onclick="loadDefenderStatus()">Check Status</button>
+            </div>
+            <div id="defender-detail-text" style="font-size: 11px; color: var(--frost-cyan); margin-top: 10px;"></div>
+          </div>
+
+          <!-- Tool 2: Windows Firewall Governance -->
+          <div class="card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px;">
+              <h3 style="font-size: 15px; font-weight: 800;">Windows Firewall Profiles</h3>
+              <span id="firewall-status-badge" class="badge badge-low">ACTIVE</span>
+            </div>
+            <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 14px;">Monitor and enforce packet filtering across Domain, Private, and Public profiles.</p>
+            <div style="display:flex; gap: 8px; flex-wrap:wrap;">
+              <button class="btn btn-primary btn-sm" onclick="enableAllFirewalls()">Enable All Profiles</button>
+              <button class="btn btn-secondary btn-sm" onclick="loadFirewallStatus()">Refresh Firewall</button>
+            </div>
+            <div id="firewall-detail-text" style="font-size: 11px; color: var(--frost-cyan); margin-top: 10px;"></div>
+          </div>
+
+          <!-- Tool 3: Automated System Hardening -->
+          <div class="card" style="grid-column: span 2;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
+              <div>
+                <h3 style="font-size: 15px; font-weight: 800;">System Hardening & Compliance Auditor</h3>
+                <p style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">Automated evaluation of UAC elevation policies, SMBv1 vulnerability, and RDP brute-force exposure.</p>
+              </div>
+              <button class="btn btn-secondary btn-sm" onclick="loadHardeningChecks()">Re-Audit Hardening</button>
+            </div>
+            <div class="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Control Name</th>
+                    <th>Status</th>
+                    <th>Current Technical State</th>
+                    <th>Remediation</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="hardening-tbody">
+                  <tr><td colspan="5" style="text-align:center;">Click "Re-Audit Hardening" to inspect system policies.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Tool 4: Startup Persistence Manager -->
+          <div class="card" style="grid-column: span 2;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
+              <div>
+                <h3 style="font-size: 15px; font-weight: 800;">Startup Persistence Manager</h3>
+                <p style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">Surveillance of Run and RunOnce registry keys used by malware for persistence across reboots.</p>
+              </div>
+              <button class="btn btn-secondary btn-sm" onclick="loadStartupItems()">Scan Startup Keys</button>
+            </div>
+            <div class="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Entry Name</th>
+                    <th>Location</th>
+                    <th>Command / Executable Target</th>
+                    <th>Risk Assessment</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="startup-tbody">
+                  <tr><td colspan="5" style="text-align:center;">Click "Scan Startup Keys" to audit autorun persistence.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Tool 5: Real-Time Process Explorer -->
+          <div class="card" style="grid-column: span 2;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
+              <div>
+                <h3 style="font-size: 15px; font-weight: 800;">Real-Time Process Surveillance</h3>
+                <p style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">Memory and execution monitoring with heuristic masquerade detection (e.g. svchost running outside System32).</p>
+              </div>
+              <button class="btn btn-secondary btn-sm" onclick="loadProcessExplorer()">Refresh Processes</button>
+            </div>
+            <div class="table-container" style="max-height: 280px; overflow-y:auto;">
+              <table>
+                <thead>
+                  <tr>
+                    <th>PID</th>
+                    <th>Process Name</th>
+                    <th>Memory</th>
+                    <th>CPU</th>
+                    <th>Executable Location</th>
+                    <th>Security Flag</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="process-tbody">
+                  <tr><td colspan="7" style="text-align:center;">Click "Refresh Processes" to inspect running processes.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Tool 6: Network & DNS Diagnostics -->
+          <div class="card">
+            <h3 style="font-size: 15px; font-weight: 800; margin-bottom: 10px;">Network & DNS Diagnostics</h3>
+            <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 14px;">Inspect active DNS resolvers, local IPv4 gateway, and public address; flush DNS cache.</p>
+            <div style="display:flex; gap: 8px; margin-bottom: 10px;">
+              <button class="btn btn-primary btn-sm" onclick="flushDnsCache()">Flush DNS Cache</button>
+              <button class="btn btn-secondary btn-sm" onclick="loadNetworkDiag()">Refresh Network</button>
+            </div>
+            <div id="dns-info-box" style="font-size: 11px; color: var(--text-primary); line-height: 1.6;">
+              Click "Refresh Network" to query adapter status.
+            </div>
+          </div>
+
+          <!-- Tool 7: Hosts File Integrity -->
+          <div class="card">
+            <h3 style="font-size: 15px; font-weight: 800; margin-bottom: 10px;">Browser & Hosts Integrity Guard</h3>
+            <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 14px;">Detect domain hijacks and fraudulent DNS redirection in C:\Windows\System32\drivers\etc\hosts.</p>
+            <div style="display:flex; gap: 8px;">
+              <button class="btn btn-secondary btn-sm" onclick="restoreCleanHosts()">Restore Clean Hosts File</button>
+            </div>
+            <div style="font-size: 11px; color: var(--aurora-green); margin-top: 10px;">System Protected: Hosts file checksum monitored.</div>
+          </div>
+
+          <!-- Tool 8: DoD 5220.22-M File Shredder -->
+          <div class="card" style="grid-column: span 2;">
+            <h3 style="font-size: 15px; font-weight: 800; margin-bottom: 10px;">DoD 5220.22-M Military-Grade File Shredder</h3>
+            <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 14px;">Permanently destroy sensitive files with multi-pass random byte overwriting to prevent forensic recovery.</p>
+            <div style="display:flex; gap: 10px;">
+              <input id="shredder-path" class="input-text" placeholder="Target file path to permanently destroy..." />
+              <select id="shredder-passes" class="input-text" style="width: 150px;">
+                <option value="3">3 Passes (DoD Standard)</option>
+                <option value="7">7 Passes (ECE Security)</option>
+              </select>
+              <button class="btn btn-danger" onclick="shredFileDod()">Shred File</button>
+            </div>
+          </div>
+
+          <!-- Tool 9: Password & Breach Checker -->
+          <div class="card" style="grid-column: span 2;">
+            <h3 style="font-size: 15px; font-weight: 800; margin-bottom: 10px;">Password Strength & HaveIBeenPwned Breach Checker</h3>
+            <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 14px;">Local Shannon entropy calculation and k-anonymity breach verification (100% private, only 5-character SHA1 prefix queried).</p>
+            <div style="display:flex; gap: 10px; margin-bottom: 10px;">
+              <input id="password-input" type="password" class="input-text" placeholder="Enter password to test strength..." />
+              <button class="btn btn-primary" onclick="checkPasswordStrength()">Test Strength & Breach</button>
+            </div>
+            <div id="password-result-box" style="font-size: 12px; color: var(--frost-cyan);"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- PAGE 8: Quarantine Vault -->
+      <section id="page-8" class="page">
+        <div class="page-header">
+          <h1 class="page-title">Quarantine Vault</h1>
+          <p class="page-subtitle">Isolated chamber storing malicious artifacts encrypted with AES-256-GCM to prevent secondary execution.</p>
+        </div>
+
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 14px;">
+            <h3 style="font-size: 15px; font-weight: 800;">Encrypted Vault Contents</h3>
+            <button class="btn btn-secondary btn-sm" onclick="loadQuarantineData()">Refresh Vault</button>
+          </div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Threat Name</th>
+                  <th>Classification</th>
+                  <th>Original Location</th>
+                  <th>Size</th>
+                  <th>Quarantined At</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="quarantine-tbody">
+                <tr><td colspan="6" style="text-align:center;">Quarantine vault is empty.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- PAGE 9: Audit Reports & PDF Generator -->
+      <section id="page-9" class="page">
+        <div class="page-header">
+          <h1 class="page-title">Executive Security Audit & PDF Reports</h1>
+          <p class="page-subtitle">Compile comprehensive endpoint security audits into presentation-ready, vector PDF documents.</p>
+        </div>
+
+        <!-- Action Card -->
+        <div class="card" style="margin-bottom: 20px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+            <div>
+              <h3 style="font-size: 16px; font-weight: 800;">System Security Audit Report Generator</h3>
+              <p style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">Aggregates posture scoring, Defender state, firewall profiles, CISA KEV vulnerabilities, and network socket exposures into an executive PDF.</p>
+            </div>
+            <div style="display:flex; gap: 10px;">
+              <button class="btn btn-primary" onclick="generatePdfReport()">
+                <svg viewBox="0 0 24 24" style="width:16px; height:16px; fill:currentColor; vertical-align:middle; margin-right:6px;"><path d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z"/></svg>
+                Generate & Save PDF to Desktop
+              </button>
+              <button class="btn btn-secondary" onclick="loadAuditReport()">
+                Live Telemetry Preview
+              </button>
+              <button class="btn btn-secondary" onclick="window.print()">
+                Print Preview
+              </button>
+            </div>
+          </div>
+          <div id="report-pdf-status" style="margin-top: 14px; font-size: 12px;"></div>
+        </div>
+
+        <!-- Telemetry Preview Grid -->
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px;">
+          <div class="card" style="text-align:center;">
+            <div style="font-size: 11px; font-weight: 700; text-transform:uppercase; color:var(--text-muted); margin-bottom:4px;">Posture Score</div>
+            <div id="report-score-val" style="font-size: 32px; font-weight: 900; color:var(--aurora-green);">95</div>
+            <div id="report-score-grade" style="font-size: 11px; font-weight: 700; color:var(--frost-cyan);">A+ SECURE</div>
+          </div>
+          <div class="card">
+            <div style="font-size: 11px; font-weight: 700; text-transform:uppercase; color:var(--text-muted); margin-bottom:4px;">Antivirus Engine</div>
+            <div id="report-defender-val" style="font-size: 14px; font-weight: 800; color:var(--aurora-green); margin-top:6px;">SHIELD ACTIVE</div>
+            <div id="report-defender-sub" style="font-size: 11px; color:var(--text-secondary); margin-top:2px;">Signatures Up-To-Date</div>
+          </div>
+          <div class="card">
+            <div style="font-size: 11px; font-weight: 700; text-transform:uppercase; color:var(--text-muted); margin-bottom:4px;">Firewall Status</div>
+            <div id="report-firewall-val" style="font-size: 14px; font-weight: 800; color:var(--aurora-green); margin-top:6px;">3 / 3 PROFILES</div>
+            <div style="font-size: 11px; color:var(--text-secondary); margin-top:2px;">Domain, Private, Public</div>
+          </div>
+          <div class="card">
+            <div style="font-size: 11px; font-weight: 700; text-transform:uppercase; color:var(--text-muted); margin-bottom:4px;">Attack Surface</div>
+            <div id="report-surface-val" style="font-size: 14px; font-weight: 800; color:var(--frost-cyan); margin-top:6px;">0 LEAKS</div>
+            <div id="report-surface-sub" style="font-size: 11px; color:var(--text-secondary); margin-top:2px;">Listening Sockets Monitored</div>
+          </div>
+        </div>
+
+        <!-- Live Report Content Preview -->
+        <div class="card">
+          <h3 style="font-size: 15px; font-weight: 800; margin-bottom: 14px;">Audit Findings & Telemetry Preview</h3>
+          <div id="report-preview-container" style="font-size: 12px; color:var(--text-secondary);">
+            Click "Live Telemetry Preview" or "Generate & Save PDF to Desktop" to compile the latest security telemetry into an executive document.
+          </div>
+        </div>
+      </section>
+
+      <!-- PAGE 10: Blue Team Terminal -->
+      <section id="page-10" class="page">
+        <div class="page-header">
+          <h1 class="page-title">Blue Team Terminal</h1>
+          <p class="page-subtitle">Integrated tactical command-line interface with pre-built security investigation commands.</p>
+        </div>
+
+        <div class="card" style="display:flex; flex-direction:column; gap:12px;">
+          <div style="display:flex; gap: 8px; flex-wrap: wrap;">
+            <button class="btn btn-secondary btn-sm" onclick="runTerminalCmd('netstat -ano')">Listening Sockets</button>
+            <button class="btn btn-secondary btn-sm" onclick="runTerminalCmd('ipconfig /all')">Network Interfaces</button>
+            <button class="btn btn-secondary btn-sm" onclick="runTerminalCmd('ipconfig /flushdns')">Flush DNS Cache</button>
+            <button class="btn btn-secondary btn-sm" onclick="runTerminalCmd('Get-MpComputerStatus')">Defender Status</button>
+          </div>
+
+          <div id="terminal-console" style="background:#11141a; border:1px solid var(--border-color); border-radius:8px; padding:14px; height: 320px; overflow-y:auto; font-family:'Consolas', monospace; font-size:12px; color:#A3BE8C; white-space:pre-wrap;">
+Fikrado Security Terminal [Version 2.6.87]
+Type a command or select a shortcut above.
+          </div>
+
+          <div style="display:flex; gap:10px;">
+            <input id="terminal-input" class="input-text" placeholder="Type PowerShell or security command..." onkeydown="if(event.key==='Enter'){ runTerminalCmd(this.value); this.value=''; }" />
+            <button class="btn btn-primary" onclick="runTerminalCmd(document.getElementById('terminal-input').value); document.getElementById('terminal-input').value='';">Execute</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- PAGE 11: Bootkit & Rootkit Scan -->
+      <section id="page-11" class="page">
+        <div class="page-header">
+          <h1 class="page-title">Bootkit & Rootkit Integrity Scan</h1>
+          <p class="page-subtitle">Deep integrity checks for bootkits and rootkits — pre-boot malware that hides below the OS.</p>
+        </div>
+
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 14px;">
+            <h3 style="font-size: 15px; font-weight: 800;">Low-Level Integrity Audit</h3>
+            <button class="btn btn-primary btn-sm" onclick="runBootkitAudit()">Run Bootkit Audit</button>
+          </div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Check Type</th>
+                  <th>Severity</th>
+                  <th>Detail</th>
+                  <th>Indicator</th>
+                  <th>Recommendation</th>
+                </tr>
+              </thead>
+              <tbody id="bootkit-tbody">
+                <tr><td colspan="5" style="text-align:center;">Click 'Run Bootkit Audit' to inspect Master Boot Record and kernel modules.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- PAGE 12: Settings -->
+      <section id="page-12" class="page">
+        <div class="page-header">
+          <h1 class="page-title">Application Settings & AI Governance</h1>
+          <p class="page-subtitle">Configure Windows DPAPI-encrypted API keys, heuristic scanner sensitivity, and whitelists.</p>
+        </div>
+
+        <div class="card">
+          <h3 style="font-size: 15px; font-weight: 800; margin-bottom: 14px;">Windows DPAPI Credential Vault</h3>
+          <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">All tokens are encrypted using the Windows DPAPI master key of your logged-in Windows account.</p>
+
+          <div style="display:grid; grid-template-columns: 180px 1fr 100px; gap: 10px; align-items:center; margin-bottom: 10px;">
+            <label style="font-weight:700;">Google Gemini API:</label>
+            <input id="key-gemini" type="password" class="input-text" placeholder="Enter Gemini API key..." />
+            <button class="btn btn-secondary btn-sm" onclick="sendIpc('save_ai_key', { provider_id: 'gemini', api_key: document.getElementById('key-gemini').value }); showToast('Gemini key encrypted with DPAPI', 'success');">Save Key</button>
+          </div>
+
+          <div style="display:grid; grid-template-columns: 180px 1fr 100px; gap: 10px; align-items:center; margin-bottom: 10px;">
+            <label style="font-weight:700;">OpenAI API:</label>
+            <input id="key-openai" type="password" class="input-text" placeholder="Enter OpenAI API key..." />
+            <button class="btn btn-secondary btn-sm" onclick="sendIpc('save_ai_key', { provider_id: 'openai', api_key: document.getElementById('key-openai').value }); showToast('OpenAI key encrypted with DPAPI', 'success');">Save Key</button>
+          </div>
+
+          <div style="display:grid; grid-template-columns: 180px 1fr 100px; gap: 10px; align-items:center; margin-bottom: 10px;">
+            <label style="font-weight:700;">Anthropic API:</label>
+            <input id="key-anthropic" type="password" class="input-text" placeholder="Enter Claude API key..." />
+            <button class="btn btn-secondary btn-sm" onclick="sendIpc('save_ai_key', { provider_id: 'anthropic', api_key: document.getElementById('key-anthropic').value }); showToast('Claude key encrypted with DPAPI', 'success');">Save Key</button>
+          </div>
+
+          <h3 style="font-size: 15px; font-weight: 800; margin-top: 24px; margin-bottom: 14px;">Heuristic Sensitivity Tuning</h3>
+          <div style="display:flex; align-items:center; gap: 16px;">
+            <label style="font-weight:700;">PE Shannon Entropy Threshold:</label>
+            <input type="range" min="6.5" max="7.8" step="0.1" value="7.3" style="width: 200px;" onchange="showToast('Entropy threshold updated: ' + this.value, 'info')" />
+            <span style="font-weight:700; color:var(--frost-cyan);">7.30 (Standard)</span>
+          </div>
+        </div>
+      </section>
+
+      </div>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
